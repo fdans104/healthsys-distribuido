@@ -1,8 +1,8 @@
-# HealthSys Distribuído 🏥
+# HealthSys Distribuído
 
 Plataforma de Gestão Hospitalar baseada em Arquitetura Distribuída e Microserviços tolerantes a falhas.
 
-## 👥 Estrutura de Divisão do Projeto
+## Estrutura de Divisão do Projeto
 - **`services/`**: Código-fonte de cada microserviço independente (Spring Boot).
   - `patient-service`: Gestão cadastral de pacientes (PostgreSQL).
   - `record-service`: Prontuário eletrônico e exames (MongoDB).
@@ -18,7 +18,7 @@ Plataforma de Gestão Hospitalar baseada em Arquitetura Distribuída e Microserv
 
 ---
 
-## 🚀 Como Executar o Ambiente Localmente
+## Como Executar o Ambiente Localmente
 
 ### Pré-requisitos
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) instalado e rodando.

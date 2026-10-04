@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: healthsys-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: healthuser
+      POSTGRES_PASSWORD: healthpass
+      POSTGRES_DB: healthsys_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/db/postgres-init:/docker-entrypoint-initdb.d
+    networks:
+      - healthsys-net
+
+  mongodb:
+    image: mongo:7-jammy
+    container_name: healthsys-mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongouser
+      MONGO_INITDB_ROOT_PASSWORD: mongopass
+      MONGO_INITDB_DATABASE: healthsys_records
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./infra/db/mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - healthsys-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: healthsys-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - healthsys-net
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+
+networks:
+  healthsys-net:
+    driver: bridge

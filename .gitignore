@@ -1,0 +1,26 @@
+# Compiladores e Builds (Java/Spring)
+target/
+build/
+.gradle/
+*.jar
+*.war
+
+# IDEs e Editores
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# Node.js / Frontend
+node_modules/
+dist/
+.next/
+*.log
+
+# Docker e Arquivos de Sistema
+.DS_Store
+Thumbs.db
+*.env
+*.env.local

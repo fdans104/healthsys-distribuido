@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -44,10 +42,38 @@ services:
     networks:
       - healthsys-net
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: healthsys-prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      # Em breve, você mapeará o prometheus.yml aqui para ler as métricas do Spring Boot
+    networks:
+      - healthsys-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: healthsys-grafana
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - healthsys-net
+
 volumes:
   postgres_data:
   mongo_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   healthsys-net:

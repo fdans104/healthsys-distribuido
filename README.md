@@ -27,7 +27,7 @@ Plataforma de Gestão Hospitalar baseada em Arquitetura Distribuída, desenvolvi
 
 ## 🚀 Como Executar a Infraestrutura Localmente
 
-A infraestrutura de suporte (Bancos de Dados, Cache e Monitoramento) foi totalmente containerizada. Você não precisa instalar nenhum banco de dados na sua máquina.
+A infraestrutura de suporte (Bancos de Dados, Cache e Monitoramento) foi totalmente containerizada. Não é preciso instalar nenhum banco de dados na máquina.
 
 ### Pré-requisitos
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) instalado e em execução (Status: *Engine running*).
@@ -40,7 +40,7 @@ docker compose up -d
 ```
 
 ### 2. Verificar o Status
-Verifique se todos os containers (Postgres, Mongo, Redis, Prometheus e Grafana) subiram corretamente:
+Verificar se todos os containers (Postgres, Mongo, Redis, Prometheus e Grafana) subiram corretamente:
 ```bash
 docker compose ps
 ```
@@ -57,7 +57,7 @@ Os bancos já nascem populados com as tabelas essenciais criadas pelos scripts d
 | **Grafana** | `http://localhost:3000`| `admin` | `admin` | - |
 | **Prometheus** | `http://localhost:9090`| - | - | - |
 
-> *Dica: Utilize ferramentas como **DBeaver** ou **MongoDB Compass** para visualizar os dados.*
+> *Dica: Utilizaremos ferramentas como **DBeaver** ou **MongoDB Compass** para visualizar os dados.*
 
 ### 4. Parar e Limpar os Serviços
 Para pausar os containers temporariamente sem perder os dados:
@@ -65,7 +65,7 @@ Para pausar os containers temporariamente sem perder os dados:
 docker compose down
 ```
 
-**⚠️ Reset Completo:** Caso você altere os arquivos de inicialização (`init.sql` ou `init-mongo.js`) e queira recriar o banco do zero (apagando todos os dados), utilize a flag `-v`:
+**⚠️ Reset Completo:** Caso queiramos alterar os arquivos de inicialização (`init.sql` ou `init-mongo.js`) e recriar o banco do zero (apagando todos os dados), utilizaremos a flag `-v`:
 ```bash
 docker compose down -v
 ```

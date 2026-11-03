@@ -1,0 +1,27 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    # Valores padrão servem para rodar fora do Docker (Postgres em localhost).
+    # Dentro do docker-compose, DB_HOST vira "postgres" (nome do container).
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:healthsys_db}
+    username: ${DB_USER:healthuser}
+    password: ${DB_PASSWORD:healthpass}
+  jpa:
+    hibernate:
+      # O schema é criado pelo init.sql; o Hibernate só confere se a entidade bate com a tabela.
+      ddl-auto: validate
+    open-in-view: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

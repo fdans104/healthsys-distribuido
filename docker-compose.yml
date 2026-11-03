@@ -12,6 +12,40 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/db/postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthuser -d healthsys_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - healthsys-net
+
+  auth-service:
+    build: ./services/auth-service
+    container_name: healthsys-auth-service
+    restart: always
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: healthsys_db
+      DB_USER: healthuser
+      DB_PASSWORD: healthpass
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - healthsys-net
+
+  frontend:
+    build: ./frontend
+    container_name: healthsys-frontend
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - auth-service
     networks:
       - healthsys-net
 

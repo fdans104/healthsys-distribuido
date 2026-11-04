@@ -15,10 +15,14 @@ erDiagram
     PACIENTES {
         int id_paciente PK
         string nome
+        string cpf UK "somente dígitos"
         date data_nascimento
-        string sexo
+        string sexo "M, F, O"
         string telefone
+        string email
+        string endereco
         timestamp criado_em
+        timestamp atualizado_em
     }
     
     ATENDIMENTOS {

@@ -1,87 +1,79 @@
 import { useEffect, useState } from 'react';
-import { usuariosApi } from './api.js';
-import UsuarioForm from './components/UsuarioForm.jsx';
-import UsuarioLista from './components/UsuarioLista.jsx';
+import { definirAoSessaoExpirar, sessao } from './api.js';
+import { ROTULO_PERFIL } from './formatos.js';
+import Login from './components/Login.jsx';
+import PacientesPagina from './paginas/PacientesPagina.jsx';
+import UsuariosPagina from './paginas/UsuariosPagina.jsx';
 
 export default function App() {
-  const [usuarios, setUsuarios] = useState([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
-  const [emEdicao, setEmEdicao] = useState(null); // usuário sendo editado, ou null = novo
+  const [usuario, setUsuario] = useState(() => sessao.obter()?.usuario ?? null);
+  const [aba, setAba] = useState('pacientes');
+  const [avisoSessao, setAvisoSessao] = useState('');
 
-  async function carregar() {
-    setCarregando(true);
-    try {
-      setUsuarios(await usuariosApi.listar());
-      setErro('');
-    } catch (e) {
-      setErro(e.message);
-    } finally {
-      setCarregando(false);
-    }
-  }
-
+  // Se o servidor recusar o token (expirado/inválido), volta para a tela de login.
   useEffect(() => {
-    carregar();
+    definirAoSessaoExpirar(() => {
+      setUsuario(null);
+      setAvisoSessao('Sua sessão expirou. Faça login novamente.');
+    });
   }, []);
 
-  function mostrarAviso(texto) {
-    setAviso(texto);
-    setTimeout(() => setAviso(''), 3000);
+  function entrar(resposta) {
+    sessao.salvar(resposta);
+    setUsuario(resposta.usuario);
+    setAba('pacientes');
+    setAvisoSessao('');
   }
 
-  async function aoSalvar(usuario, foiEdicao) {
-    setEmEdicao(null);
-    mostrarAviso(foiEdicao ? `${usuario.nome} foi atualizado.` : `${usuario.nome} foi cadastrado.`);
-    await carregar();
+  function sair() {
+    sessao.limpar();
+    setUsuario(null);
   }
 
-  async function aoExcluir(usuario) {
-    if (!window.confirm(`Excluir o usuário ${usuario.nome}?`)) return;
-    try {
-      await usuariosApi.remover(usuario.id);
-      if (emEdicao?.id === usuario.id) setEmEdicao(null);
-      mostrarAviso(`${usuario.nome} foi excluído.`);
-      await carregar();
-    } catch (e) {
-      setErro(e.message);
-    }
+  if (!usuario) {
+    return (
+      <>
+        {avisoSessao && <div className="faixa faixa-erro faixa-flutuante" role="alert">{avisoSessao}</div>}
+        <Login onEntrar={entrar} />
+      </>
+    );
   }
+
+  const ehAdmin = usuario.perfil === 'ADMIN';
+  const abaAtual = aba === 'usuarios' && ehAdmin ? 'usuarios' : 'pacientes';
 
   return (
     <div className="pagina">
       <header className="topo">
         <h1>HealthSys</h1>
-        <span className="subtitulo">Cadastro de usuários</span>
+
+        <nav className="abas" aria-label="Seções">
+          <button className={`aba ${abaAtual === 'pacientes' ? 'aba-ativa' : ''}`}
+                  aria-current={abaAtual === 'pacientes' ? 'page' : undefined}
+                  onClick={() => setAba('pacientes')}>
+            Pacientes
+          </button>
+          {ehAdmin && (
+            <button className={`aba ${abaAtual === 'usuarios' ? 'aba-ativa' : ''}`}
+                    aria-current={abaAtual === 'usuarios' ? 'page' : undefined}
+                    onClick={() => setAba('usuarios')}>
+              Usuários
+            </button>
+          )}
+        </nav>
+
+        <div className="sessao">
+          <span className="sessao-nome">{usuario.nome}</span>
+          <span className={`etiqueta etiqueta-${usuario.perfil.toLowerCase()}`}>
+            {ROTULO_PERFIL[usuario.perfil] ?? usuario.perfil}
+          </span>
+          <button className="botao botao-leve" onClick={sair}>Sair</button>
+        </div>
       </header>
 
-      {aviso && <div className="faixa faixa-ok">{aviso}</div>}
-      {erro && <div className="faixa faixa-erro">{erro}</div>}
-
-      <main className="conteudo">
-        <section className="cartao">
-          <UsuarioForm
-            key={emEdicao?.id ?? 'novo'}
-            usuario={emEdicao}
-            onSalvo={aoSalvar}
-            onCancelar={() => setEmEdicao(null)}
-          />
-        </section>
-
-        <section className="cartao">
-          <div className="cartao-topo">
-            <h2>Usuários cadastrados</h2>
-            <button className="botao botao-leve" onClick={carregar}>Atualizar</button>
-          </div>
-          <UsuarioLista
-            usuarios={usuarios}
-            carregando={carregando}
-            onEditar={setEmEdicao}
-            onExcluir={aoExcluir}
-          />
-        </section>
-      </main>
+      {abaAtual === 'usuarios'
+        ? <UsuariosPagina usuarioLogado={usuario} />
+        : <PacientesPagina usuarioLogado={usuario} />}
     </div>
   );
 }

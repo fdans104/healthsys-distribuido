@@ -5,10 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    // Em desenvolvimento (npm run dev), repassa /api para o auth-service local.
+    // Em desenvolvimento (npm run dev), repassa /api para o API Gateway local.
     // Em produção quem faz esse papel é o nginx (ver nginx.conf).
     proxy: {
-      '/api': 'http://localhost:8081',
+      '/api': 'http://localhost:8080',
     },
   },
 });

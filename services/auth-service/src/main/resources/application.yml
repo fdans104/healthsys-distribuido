@@ -16,6 +16,22 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
+# Token JWT (HS256). O MESMO segredo é configurado no api-gateway e no patient-service,
+# que validam o token sozinhos, sem precisar consultar este serviço a cada requisição.
+jwt:
+  secret: ${JWT_SECRET:healthsys-dev-secret-troque-em-producao-0123456789}
+  expiracao-horas: ${JWT_EXPIRACAO_HORAS:8}
+
+# Administrador garantido na inicialização (ver AdminInicializador).
+healthsys:
+  admin:
+    email: ${ADMIN_EMAIL:admin@healthsys.com}
+    senha: ${ADMIN_SENHA:admin123}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
 management:
   endpoints:
     web:

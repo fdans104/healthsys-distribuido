@@ -1,10 +1,13 @@
 package com.healthsys.auth.usuario;
 
+import com.healthsys.auth.exception.OperacaoNaoPermitidaException;
 import com.healthsys.auth.usuario.dto.UsuarioCreateRequest;
 import com.healthsys.auth.usuario.dto.UsuarioResponse;
 import com.healthsys.auth.usuario.dto.UsuarioUpdateRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,7 +21,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.List;
 
-/** Endpoints REST do cadastro de usuários. */
+/** Endpoints REST do cadastro de usuários (acesso restrito ao perfil ADMIN, ver SecurityConfig). */
 @RestController
 @RequestMapping("/api/v1/usuarios")
 public class UsuarioController {
@@ -53,7 +56,11 @@ public class UsuarioController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> remover(@PathVariable Integer id) {
+    public ResponseEntity<Void> remover(@PathVariable Integer id, @AuthenticationPrincipal Jwt jwt) {
+        // Evita que o administrador logado tranque a si mesmo para fora do sistema.
+        if (id.toString().equals(jwt.getSubject())) {
+            throw new OperacaoNaoPermitidaException("Você não pode excluir o seu próprio usuário.");
+        }
         service.remover(id);
         return ResponseEntity.noContent().build(); // 204
     }

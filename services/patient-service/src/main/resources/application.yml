@@ -1,0 +1,37 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: patient-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:healthsys_db}
+    username: ${DB_USER:healthuser}
+    password: ${DB_PASSWORD:healthpass}
+  sql:
+    init:
+      # Executa o schema.sql (idempotente) a cada inicialização: o serviço é dono da sua tabela
+      # e consegue atualizar bancos criados antes desta versão sem "docker compose down -v".
+      mode: always
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+# Mesmo segredo do auth-service: o token é validado localmente (assinatura + expiração + emissor).
+jwt:
+  secret: ${JWT_SECRET:healthsys-dev-secret-troque-em-producao-0123456789}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

@@ -1,0 +1,44 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      default-filters:
+        # Repassa o Host original (ex.: localhost:5173), para o header Location das respostas 201 apontar para o endereço público.
+        - PreserveHostHeader
+      routes:
+        # O id de cada rota é usado como nome do serviço na resposta 503 (ver ServicoIndisponivelHandler).
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/auth/**,/api/v1/usuarios/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: authService
+
+        - id: patient-service
+          uri: ${PATIENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/pacientes/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: patientService
+
+# Mesmo segredo do auth-service: o gateway barra tokens inválidos antes de chegarem aos serviços.
+jwt:
+  secret: ${JWT_SECRET:healthsys-dev-secret-troque-em-producao-0123456789}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

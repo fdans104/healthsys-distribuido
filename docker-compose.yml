@@ -1,3 +1,15 @@
+# Segredo usado para assinar (auth-service) e validar (api-gateway, patient-service) os tokens JWT.
+# Para trocar sem editar este arquivo: crie um .env na raiz com JWT_SECRET=<no mínimo 32 caracteres>.
+x-jwt-env: &jwt-env
+  JWT_SECRET: ${JWT_SECRET:-healthsys-dev-secret-troque-em-producao-0123456789}
+
+x-db-env: &db-env
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_NAME: healthsys_db
+  DB_USER: healthuser
+  DB_PASSWORD: healthpass
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -20,18 +32,45 @@ services:
     networks:
       - healthsys-net
 
+  # Ponto único de entrada da API: roteia, valida o JWT e aplica circuit breaker.
+  api-gateway:
+    build: ./services/api-gateway
+    container_name: healthsys-api-gateway
+    restart: always
+    environment:
+      <<: *jwt-env
+      AUTH_SERVICE_URL: http://auth-service:8081
+      PATIENT_SERVICE_URL: http://patient-service:8082
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - patient-service
+    networks:
+      - healthsys-net
+
   auth-service:
     build: ./services/auth-service
     container_name: healthsys-auth-service
     restart: always
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: healthsys_db
-      DB_USER: healthuser
-      DB_PASSWORD: healthpass
+      <<: [*db-env, *jwt-env]
     ports:
       - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - healthsys-net
+
+  patient-service:
+    build: ./services/patient-service
+    container_name: healthsys-patient-service
+    restart: always
+    environment:
+      <<: [*db-env, *jwt-env]
+    ports:
+      - "8082:8082"
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,7 +84,7 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - auth-service
+      - api-gateway
     networks:
       - healthsys-net
 

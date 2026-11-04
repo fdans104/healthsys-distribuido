@@ -1,11 +1,16 @@
 -- Inicialização do Banco Relacional (PostgreSQL) - HealthSys
+-- Tabela do patient-service (o serviço também roda o seu schema.sql, que atualiza bancos antigos).
 CREATE TABLE IF NOT EXISTS pacientes (
     id_paciente SERIAL PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
+    cpf VARCHAR(11) UNIQUE, -- somente dígitos
     data_nascimento DATE NOT NULL,
-    sexo CHAR(1),
+    sexo CHAR(1), -- M, F ou O
     telefone VARCHAR(20),
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    email VARCHAR(150),
+    endereco VARCHAR(255),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS atendimentos (
@@ -29,7 +34,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nome VARCHAR(150) NOT NULL,
     perfil VARCHAR(50) NOT NULL, -- Ex: MEDICO, ENFERMEIRO, ADMIN
     email VARCHAR(150) UNIQUE NOT NULL,
-    senha VARCHAR(255) NOT NULL, -- Será guardado o Hash da senha
+    senha VARCHAR(255) NOT NULL, -- Hash BCrypt da senha (nunca a senha em texto puro)
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -43,13 +48,11 @@ CREATE TABLE IF NOT EXISTS triagens (
     data_triagem TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Carga inicial de exemplo para testes da equipe
-INSERT INTO pacientes (nome, data_nascimento, sexo, telefone) VALUES 
-('Paciente Teste 1', '1990-05-15', 'M', '(85) 98888-0001'),
-('Paciente Teste 2', '1985-11-20', 'F', '(85) 98888-0002')
+-- Carga inicial de exemplo para testes da equipe (CPFs válidos, fictícios)
+INSERT INTO pacientes (nome, cpf, data_nascimento, sexo, telefone) VALUES
+('Paciente Teste 1', '52998224725', '1990-05-15', 'M', '(85) 98888-0001'),
+('Paciente Teste 2', '11144477735', '1985-11-20', 'F', '(85) 98888-0002')
 ON CONFLICT DO NOTHING;
 
--- Inserir usuário Admin padrão para testes (a senha é apenas um mock temporário)
-INSERT INTO usuarios (nome, perfil, email, senha) VALUES 
-('Administrador', 'ADMIN', 'admin@healthsys.com', 'admin123')
-ON CONFLICT (email) DO NOTHING;
+-- O usuário administrador padrão (admin@healthsys.com / admin123) NÃO é inserido aqui:
+-- o auth-service o cria na inicialização já com a senha em hash BCrypt (ver AdminInicializador).

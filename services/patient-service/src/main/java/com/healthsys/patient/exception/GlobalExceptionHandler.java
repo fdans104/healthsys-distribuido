@@ -4,6 +4,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -25,6 +26,17 @@ public class GlobalExceptionHandler {
     public ProblemDetail cpfDuplicado(CpfJaCadastradoException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         pd.setProperty("erros", Map.of("cpf", ex.getMessage()));
+        return pd;
+    }
+
+    /**
+     * RN54: edição feita sobre uma versão antiga do paciente. Vale tanto para a checagem do service
+     * quanto para o caso de duas gravações simultâneas, em que o próprio banco recusa a segunda.
+     */
+    @ExceptionHandler({ConflitoEdicaoException.class, ObjectOptimisticLockingFailureException.class})
+    public ProblemDetail conflitoDeEdicao(Exception ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ConflitoEdicaoException.MENSAGEM);
+        pd.setProperty("erros", Map.of("versao", ConflitoEdicaoException.MENSAGEM));
         return pd;
     }
 

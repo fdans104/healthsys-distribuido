@@ -1,5 +1,6 @@
 package com.healthsys.patient.paciente;
 
+import com.healthsys.patient.exception.ConflitoEdicaoException;
 import com.healthsys.patient.exception.CpfJaCadastradoException;
 import com.healthsys.patient.exception.RecursoNaoEncontradoException;
 import com.healthsys.patient.paciente.dto.PacienteRequest;
@@ -67,6 +68,13 @@ public class PacienteService {
     @Transactional
     public PacienteResponse atualizar(Integer id, PacienteRequest req) {
         Paciente paciente = buscarEntidade(id);
+
+        // RN54: só aceita a alteração de quem estava vendo a versão mais recente do registro.
+        // Se outra pessoa salvou antes, o número de edição já subiu e não bate com o que a tela enviou.
+        if (req.versao() == null || !req.versao().equals(paciente.getVersao())) {
+            throw new ConflitoEdicaoException();
+        }
+
         String cpf = CpfUtils.somenteDigitos(req.cpf());
         if (repository.existsByCpfAndIdNot(cpf, id)) {
             throw new CpfJaCadastradoException();

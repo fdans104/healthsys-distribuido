@@ -44,6 +44,15 @@ export default function PacientesPagina({ usuarioLogado }) {
     await carregar();
   }
 
+  // RN54: alguém salvou este paciente antes. Fecha a edição, recarrega a lista (versão mais recente)
+  // e só então mostra o aviso, porque carregar() limpa a faixa de erro quando termina.
+  async function aoConflito(mensagem) {
+    setEmEdicao(null);
+    setVersaoForm((v) => v + 1);
+    await carregar();
+    setErro(mensagem);
+  }
+
   async function aoExcluir(paciente) {
     if (!window.confirm(`Excluir o paciente ${paciente.nome}? Essa ação não pode ser desfeita.`)) return;
     try {
@@ -67,6 +76,7 @@ export default function PacientesPagina({ usuarioLogado }) {
             paciente={emEdicao}
             onSalvo={aoSalvar}
             onCancelar={() => setEmEdicao(null)}
+            onConflito={aoConflito}
           />
         </section>
 

@@ -35,6 +35,9 @@ public record PacienteRequest(
         String email,
 
         @Size(max = 255, message = "endereco deve ter no máximo 255 caracteres")
-        String endereco
+        String endereco,
+
+        /** RN54: versão do registro que o usuário estava vendo ao editar. Usada no PUT; ignorada no POST. */
+        Long versao
 ) {
 }

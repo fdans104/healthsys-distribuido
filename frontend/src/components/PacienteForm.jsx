@@ -9,8 +9,7 @@ const SEXOS = [
 ];
 
 /** Formulário de cadastro de paciente. Se receber "paciente", vira formulário de edição. */
-export default function PacienteForm({ paciente, onSalvo, onCancelar }) {
-  const editando = Boolean(paciente);
+export default function PacienteForm({ paciente, onSalvo, onCancelar, onConflito }) {  const editando = Boolean(paciente);
   const [campos, setCampos] = useState({
     nome: paciente?.nome ?? '',
     cpf: formatarCpf(paciente?.cpf ?? ''),
@@ -46,6 +45,7 @@ export default function PacienteForm({ paciente, onSalvo, onCancelar }) {
       telefone: campos.telefone || null,
       email: campos.email || null,
       endereco: campos.endereco || null,
+      versao: paciente?.versao ?? null, // RN54: número de edição do paciente que está na tela
     };
 
     try {
@@ -54,6 +54,11 @@ export default function PacienteForm({ paciente, onSalvo, onCancelar }) {
         : await pacientesApi.criar(dados);
       onSalvo(salvo, editando);
     } catch (err) {
+      // RN54: outra pessoa salvou este paciente antes. A página recarrega a lista e avisa.
+      if (err.campos?.versao && onConflito) {
+        onConflito(err.message);
+        return;
+      }
       setErrosCampo(err.campos || {});
       setErroGeral(err.message);
     } finally {

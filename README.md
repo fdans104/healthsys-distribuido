@@ -22,7 +22,7 @@ Plataforma de Gestão Hospitalar baseada em Arquitetura Distribuída, desenvolvi
 - **`frontend/`**: Aplicação cliente (React + Vite, servida por nginx). ✅ *Login, cadastro de pacientes e cadastro de usuários.*
 - **`infra/`**:
   - `docker/`: Configurações adicionais de containers.
-  - `db/`: Scripts de inicialização automática de banco de dados (`postgres-init` e `mongo-init`).
+  - `db/`: Scripts de inicialização automática de banco de dados (`postgres-auth-init`, `postgres-patient-init` e `mongo-init`).
   - `k8s/`: Manifests de deployment e serviços para Kubernetes.
 
 ---
@@ -31,12 +31,12 @@ Plataforma de Gestão Hospitalar baseada em Arquitetura Distribuída, desenvolvi
 
 ```mermaid
 flowchart LR
-    Browser([Navegador]) -->|":5173"| Nginx[frontend<br/>nginx + React]
+    Browser([Navegador]) -->|":3000"| Nginx[frontend<br/>nginx + React]
     Nginx -->|"/api/**"| GW[api-gateway :8080<br/>valida JWT · circuit breaker]
     GW -->|"/api/v1/auth/** · /api/v1/usuarios/**"| Auth[auth-service :8081]
     GW -->|"/api/v1/pacientes/**"| Pat[patient-service :8082]
-    Auth --> PG[(PostgreSQL)]
-    Pat --> PG
+    Auth --> PGA[(PostgreSQL<br/>auth)]
+    Pat --> PGP[(PostgreSQL<br/>pacientes)]
 ```
 
 1. O usuário faz login: o **auth-service** confere a senha (BCrypt) e devolve um **token JWT** assinado (HS256, válido por 8 h) com o id, o nome e o **perfil** do usuário.
@@ -70,7 +70,7 @@ docker compose up -d --build
 ```
 > Na primeira execução o build leva alguns minutos (download das dependências Maven e npm). Os testes automatizados de cada serviço rodam durante o build; se algum falhar, a imagem não é gerada.
 
-> Quem já tinha o banco criado pela versão anterior **não precisa** apagar o volume: o `patient-service` adiciona as colunas novas sozinho e o `auth-service` converte a senha do admin antigo para hash BCrypt.
+> **Bancos separados:** cada serviço tem o seu PostgreSQL. Se você já subiu uma versão anterior do projeto, rode `docker compose down -v --remove-orphans` antes de subir de novo (isso apaga os dados de teste).
 
 ### 2. Verificar o Status
 Verificar se todos os containers subiram corretamente:
@@ -84,17 +84,18 @@ docker compose ps
 
 | Serviço | Endereço | Usuário / Admin | Senha | Database Interno |
 | :--- | :--- | :--- | :--- | :--- |
-| **Frontend (Web)** | `http://localhost:5173` | `admin@healthsys.com` | `admin123` | - |
+| **Frontend (Web)** | `http://localhost:3000` | `admin@healthsys.com` | `admin123` | - |
 | **API Gateway** | `http://localhost:8080` | - | - | - |
-| **Auth Service (API)** | `http://localhost:8081` · Swagger: `/swagger-ui.html` | - | - | `healthsys_db` |
-| **Patient Service (API)** | `http://localhost:8082` · Swagger: `/swagger-ui.html` | - | - | `healthsys_db` |
-| **PostgreSQL** | `localhost:5432` | `healthuser` | `healthpass` | `healthsys_db` |
+| **Auth Service (API)** | `http://localhost:8081` · Swagger: `/swagger-ui.html` | - | - | `healthsys_auth` |
+| **Patient Service (API)** | `http://localhost:8082` · Swagger: `/swagger-ui.html` | - | - | `healthsys_patients` |
+| **PostgreSQL (auth)** | `localhost:5432` | `auth_user` | `auth_pass` | `healthsys_auth` |
+| **PostgreSQL (pacientes)** | `localhost:5433` | `patient_user` | `patient_pass` | `healthsys_patients` |
 | **MongoDB** | `localhost:27017` | `mongouser` | `mongopass` | `healthsys_records` |
 | **Redis** | `localhost:6379` | - | - | - |
-| **Grafana** | `http://localhost:3000`| `admin` | `admin` | - |
+| **Grafana** | `http://localhost:3001`| `admin` | `admin` | - |
 | **Prometheus** | `http://localhost:9090`| - | - | - |
 
-> **Portas:** o frontend usa a `5173` (padrão do Vite) porque a `3000` já é do Grafana. A `8080` é do API Gateway; os microsserviços são numerados a partir da `8081`.
+> **Portas:** o site usa a `3000` e o Grafana a `3001`. A `8080` é do API Gateway; os microsserviços são numerados a partir da `8081`.
 
 > **Swagger:** abra `http://localhost:8081/swagger-ui.html`, execute o `POST /api/v1/auth/login`, copie o `token` e cole no botão **Authorize**. O mesmo token funciona no Swagger do `patient-service` (8082).
 
@@ -118,7 +119,7 @@ No próximo `docker compose up -d`, os bancos serão recriados novinhos em folha
 
 ## 🔌 API REST
 
-Todas as rotas são acessadas pelo gateway (`http://localhost:8080`) ou pelo frontend (`http://localhost:5173`, repassado pelo nginx). Exceto o login, todas exigem o header `Authorization: Bearer <token>`.
+Todas as rotas são acessadas pelo gateway (`http://localhost:8080`) ou pelo frontend (`http://localhost:3000`, repassado pelo nginx). Exceto o login, todas exigem o header `Authorization: Bearer <token>`.
 
 Erros seguem o formato padrão RFC 7807 (*Problem Details*). Erros de validação trazem o campo `erros` com a mensagem de cada campo. `401` = token ausente/inválido/expirado; `403` = perfil sem permissão; `503` = serviço fora do ar (resposta do circuit breaker).
 
@@ -184,7 +185,8 @@ Erros seguem o formato padrão RFC 7807 (*Problem Details*). Erros de validaçã
 
 - Obrigatórios: `nome`, `cpf`, `dataNascimento` (formato `AAAA-MM-DD`, não pode estar no futuro) e `sexo` (`M`, `F` ou `O`).
 - O CPF é aceito com ou sem pontuação, tem os dígitos verificadores conferidos, é gravado só com números e deve ser único.
-- A resposta inclui a `idade`, calculada a partir da data de nascimento.
+- A resposta inclui a `idade`, calculada a partir da data de nascimento, e a `versao` do registro.
+- No `PUT`, envie de volta a `versao` recebida. Se outra pessoa salvou o paciente antes, a API responde `409` e nada é gravado (RN54).
 
 ### Health checks
 `GET /actuator/health` em cada serviço (`8080`, `8081`, `8082`) — público.

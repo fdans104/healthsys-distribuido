@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -53,6 +54,10 @@ public class Paciente {
     @Column(name = "atualizado_em")
     private LocalDateTime atualizadoEm;
 
+    /** RN54: número de edição. O Hibernate soma +1 a cada alteração e recusa gravar sobre uma versão antiga. */
+    @Version
+    private Long versao;
+
     protected Paciente() {
         // exigido pelo JPA
     }
@@ -90,6 +95,7 @@ public class Paciente {
     public String getEndereco() { return endereco; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
     public LocalDateTime getAtualizadoEm() { return atualizadoEm; }
+    public Long getVersao() { return versao; }
 
     public void setNome(String nome) { this.nome = nome; }
     public void setCpf(String cpf) { this.cpf = cpf; }

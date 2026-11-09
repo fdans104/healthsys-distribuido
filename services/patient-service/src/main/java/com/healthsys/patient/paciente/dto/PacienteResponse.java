@@ -19,7 +19,8 @@ public record PacienteResponse(
         String email,
         String endereco,
         LocalDateTime criadoEm,
-        LocalDateTime atualizadoEm
+        LocalDateTime atualizadoEm,
+        Long versao
 ) {
     public static PacienteResponse de(Paciente p) {
         Integer idade = p.getDataNascimento() == null
@@ -27,6 +28,7 @@ public record PacienteResponse(
                 : Period.between(p.getDataNascimento(), LocalDate.now()).getYears();
         return new PacienteResponse(
                 p.getId(), p.getNome(), p.getCpf(), p.getDataNascimento(), idade, p.getSexo(),
-                p.getTelefone(), p.getEmail(), p.getEndereco(), p.getCriadoEm(), p.getAtualizadoEm());
+                p.getTelefone(), p.getEmail(), p.getEndereco(), p.getCriadoEm(), p.getAtualizadoEm(),
+                p.getVersao());
     }
 }

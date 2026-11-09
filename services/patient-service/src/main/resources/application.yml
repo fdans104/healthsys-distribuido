@@ -5,9 +5,9 @@ spring:
   application:
     name: patient-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:healthsys_db}
-    username: ${DB_USER:healthuser}
-    password: ${DB_PASSWORD:healthpass}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:healthsys_patients}
+    username: ${DB_USER:patient_user}
+    password: ${DB_PASSWORD:patient_pass}
   sql:
     init:
       # Executa o schema.sql (idempotente) a cada inicialização: o serviço é dono da sua tabela

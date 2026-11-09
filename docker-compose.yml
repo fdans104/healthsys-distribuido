@@ -3,29 +3,61 @@
 x-jwt-env: &jwt-env
   JWT_SECRET: ${JWT_SECRET:-healthsys-dev-secret-troque-em-producao-0123456789}
 
-x-db-env: &db-env
-  DB_HOST: postgres
+# RNF09: cada serviço tem o SEU banco, com host, nome, usuário e senha próprios.
+# O auth-service nunca enxerga o banco de pacientes, e vice-versa.
+x-auth-db-env: &auth-db-env
+  DB_HOST: postgres-auth
   DB_PORT: 5432
-  DB_NAME: healthsys_db
-  DB_USER: healthuser
-  DB_PASSWORD: healthpass
+  DB_NAME: healthsys_auth
+  DB_USER: auth_user
+  DB_PASSWORD: auth_pass
+
+x-patient-db-env: &patient-db-env
+  DB_HOST: postgres-patient
+  DB_PORT: 5432
+  DB_NAME: healthsys_patients
+  DB_USER: patient_user
+  DB_PASSWORD: patient_pass
 
 services:
-  postgres:
+  # Banco do auth-service (usuários e login). No seu computador: localhost:5432.
+  postgres-auth:
     image: postgres:16-alpine
-    container_name: healthsys-postgres
+    container_name: healthsys-postgres-auth
     restart: always
     environment:
-      POSTGRES_USER: healthuser
-      POSTGRES_PASSWORD: healthpass
-      POSTGRES_DB: healthsys_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_pass
+      POSTGRES_DB: healthsys_auth
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./infra/db/postgres-init:/docker-entrypoint-initdb.d
+      - postgres_auth_data:/var/lib/postgresql/data
+      - ./infra/db/postgres-auth-init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U healthuser -d healthsys_db"]
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d healthsys_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - healthsys-net
+
+  # Banco do patient-service (pacientes). No seu computador: localhost:5433.
+  postgres-patient:
+    image: postgres:16-alpine
+    container_name: healthsys-postgres-patient
+    restart: always
+    environment:
+      POSTGRES_USER: patient_user
+      POSTGRES_PASSWORD: patient_pass
+      POSTGRES_DB: healthsys_patients
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_patient_data:/var/lib/postgresql/data
+      - ./infra/db/postgres-patient-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U patient_user -d healthsys_patients"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -54,11 +86,11 @@ services:
     container_name: healthsys-auth-service
     restart: always
     environment:
-      <<: [*db-env, *jwt-env]
+      <<: [*auth-db-env, *jwt-env]
     ports:
       - "8081:8081"
     depends_on:
-      postgres:
+      postgres-auth:
         condition: service_healthy
     networks:
       - healthsys-net
@@ -68,11 +100,11 @@ services:
     container_name: healthsys-patient-service
     restart: always
     environment:
-      <<: [*db-env, *jwt-env]
+      <<: [*patient-db-env, *jwt-env]
     ports:
       - "8082:8082"
     depends_on:
-      postgres:
+      postgres-patient:
         condition: service_healthy
     networks:
       - healthsys-net
@@ -82,7 +114,7 @@ services:
     container_name: healthsys-frontend
     restart: always
     ports:
-      - "5173:80"
+      - "3000:80"
     depends_on:
       - api-gateway
     networks:
@@ -135,14 +167,15 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
       - healthsys-net
 
 volumes:
-  postgres_data:
+  postgres_auth_data:
+  postgres_patient_data:
   mongo_data:
   redis_data:
   prometheus_data:

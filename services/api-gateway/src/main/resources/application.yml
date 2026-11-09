@@ -7,7 +7,7 @@ spring:
   cloud:
     gateway:
       default-filters:
-        # Repassa o Host original (ex.: localhost:5173), para o header Location das respostas 201 apontar para o endereço público.
+        # Repassa o Host original (ex.: localhost:3000), para o header Location das respostas 201 apontar para o endereço público.
         - PreserveHostHeader
       routes:
         # O id de cada rota é usado como nome do serviço na resposta 503 (ver ServicoIndisponivelHandler).

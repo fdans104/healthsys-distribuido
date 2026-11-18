@@ -1,7 +1,9 @@
 package com.healthsys.patient.paciente;
 
+import com.healthsys.patient.clinico.ClinicoService;
 import com.healthsys.patient.exception.ConflitoEdicaoException;
 import com.healthsys.patient.exception.CpfJaCadastradoException;
+import com.healthsys.patient.exception.PacienteComRegistrosClinicosException;
 import com.healthsys.patient.exception.RecursoNaoEncontradoException;
 import com.healthsys.patient.paciente.dto.PacienteRequest;
 import com.healthsys.patient.paciente.dto.PacienteResponse;
@@ -21,9 +23,11 @@ public class PacienteService {
     private static final Pattern PARECE_CPF = Pattern.compile("[\\d.\\-\\s]+");
 
     private final PacienteRepository repository;
+    private final ClinicoService clinico;
 
-    public PacienteService(PacienteRepository repository) {
+    public PacienteService(PacienteRepository repository, ClinicoService clinico) {
         this.repository = repository;
+        this.clinico = clinico;
     }
 
     @Transactional
@@ -91,9 +95,14 @@ public class PacienteService {
         return PacienteResponse.de(repository.saveAndFlush(paciente));
     }
 
+    /** Só exclui um cadastro feito por engano: paciente com prontuário (registros clínicos) não pode ser apagado. */
     @Transactional
     public void remover(Integer id) {
-        repository.delete(buscarEntidade(id));
+        Paciente paciente = buscarEntidade(id);
+        if (clinico.possuiRegistrosClinicos(id)) {
+            throw new PacienteComRegistrosClinicosException();
+        }
+        repository.delete(paciente);
     }
 
     private Paciente buscarEntidade(Integer id) {

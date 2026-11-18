@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
-/** Mapeia a tabela "usuarios" criada em infra/db/postgres-init/init.sql. */
+/** Mapeia a tabela "usuarios" criada em infra/db/postgres-auth-init/init.sql. */
 @Entity
 @Table(name = "usuarios")
 public class Usuario {

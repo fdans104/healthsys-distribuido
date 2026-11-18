@@ -1,7 +1,9 @@
-# Segredo usado para assinar (auth-service) e validar (api-gateway, patient-service) os tokens JWT.
+# Segredo usado para assinar (auth-service) e validar (gateway e demais serviços) os tokens JWT.
 # Para trocar sem editar este arquivo: crie um .env na raiz com JWT_SECRET=<no mínimo 32 caracteres>.
 x-jwt-env: &jwt-env
   JWT_SECRET: ${JWT_SECRET:-healthsys-dev-secret-troque-em-producao-0123456789}
+  # Fuso horário dos serviços Java: datas e horas gravadas no horário de Brasília.
+  TZ: America/Sao_Paulo
 
 # RNF09: cada serviço tem o SEU banco, com host, nome, usuário e senha próprios.
 # O auth-service nunca enxerga o banco de pacientes, e vice-versa.
@@ -18,6 +20,13 @@ x-patient-db-env: &patient-db-env
   DB_NAME: healthsys_patients
   DB_USER: patient_user
   DB_PASSWORD: patient_pass
+
+x-triage-db-env: &triage-db-env
+  DB_HOST: postgres-triage
+  DB_PORT: 5432
+  DB_NAME: healthsys_triage
+  DB_USER: triage_user
+  DB_PASSWORD: triage_pass
 
 services:
   # Banco do auth-service (usuários e login). No seu computador: localhost:5432.
@@ -64,6 +73,27 @@ services:
     networks:
       - healthsys-net
 
+  # Banco do triage-service (triagens). No seu computador: localhost:5434.
+  postgres-triage:
+    image: postgres:16-alpine
+    container_name: healthsys-postgres-triage
+    restart: always
+    environment:
+      POSTGRES_USER: triage_user
+      POSTGRES_PASSWORD: triage_pass
+      POSTGRES_DB: healthsys_triage
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_triage_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triage_user -d healthsys_triage"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - healthsys-net
+
   # Ponto único de entrada da API: roteia, valida o JWT e aplica circuit breaker.
   api-gateway:
     build: ./services/api-gateway
@@ -73,11 +103,15 @@ services:
       <<: *jwt-env
       AUTH_SERVICE_URL: http://auth-service:8081
       PATIENT_SERVICE_URL: http://patient-service:8082
+      RECORD_SERVICE_URL: http://record-service:8083
+      TRIAGE_SERVICE_URL: http://triage-service:8084
     ports:
       - "8080:8080"
     depends_on:
       - auth-service
       - patient-service
+      - record-service
+      - triage-service
     networks:
       - healthsys-net
 
@@ -106,6 +140,41 @@ services:
     depends_on:
       postgres-patient:
         condition: service_healthy
+    networks:
+      - healthsys-net
+
+  # Prontuário eletrônico (consultas, exames, medicamentos) no MongoDB (RNF09).
+  record-service:
+    build: ./services/record-service
+    container_name: healthsys-record-service
+    restart: always
+    environment:
+      <<: *jwt-env
+      MONGO_URI: mongodb://mongouser:mongopass@mongodb:27017/healthsys_records?authSource=admin
+      PATIENT_SERVICE_URL: http://patient-service:8082
+    ports:
+      - "8083:8083"
+    depends_on:
+      - mongodb
+      - patient-service
+    networks:
+      - healthsys-net
+
+  # Teletriagem e classificação de risco, com banco próprio.
+  triage-service:
+    build: ./services/triage-service
+    container_name: healthsys-triage-service
+    restart: always
+    environment:
+      <<: [*triage-db-env, *jwt-env]
+      PATIENT_SERVICE_URL: http://patient-service:8082
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres-triage:
+        condition: service_healthy
+      patient-service:
+        condition: service_started
     networks:
       - healthsys-net
 
@@ -176,6 +245,7 @@ services:
 volumes:
   postgres_auth_data:
   postgres_patient_data:
+  postgres_triage_data:
   mongo_data:
   redis_data:
   prometheus_data:

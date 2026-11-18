@@ -1,0 +1,41 @@
+server:
+  port: ${SERVER_PORT:8084}
+
+spring:
+  application:
+    name: triage-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:healthsys_triage}
+    username: ${DB_USER:triage_user}
+    password: ${DB_PASSWORD:triage_pass}
+  sql:
+    init:
+      # Executa o schema.sql (idempotente) a cada inicialização: o serviço é dono da sua tabela
+      # e consegue atualizar bancos criados antes desta versão sem "docker compose down -v".
+      mode: always
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+# Mesmo segredo do auth-service: o token é validado localmente (assinatura + expiração + emissor).
+jwt:
+  secret: ${JWT_SECRET:healthsys-dev-secret-troque-em-producao-0123456789}
+
+# Endereço interno do serviço de pacientes (usado para confirmar o paciente e guardar o nome dele).
+servicos:
+  pacientes-url: ${PATIENT_SERVICE_URL:http://localhost:8082}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

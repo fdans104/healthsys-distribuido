@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ProblemDetail corpoInvalido(HttpMessageNotReadableException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
-                "Corpo da requisição inválido. Verifique o JSON e se o perfil é ADMIN, MEDICO ou ENFERMEIRO.");
+                "Corpo da requisição inválido. Verifique o JSON e se o perfil é ADMIN, RECEPCIONISTA, MEDICO ou ENFERMEIRO.");
     }
 
     /** Parâmetro de rota com tipo errado (ex.: /api/v1/usuarios/abc). */

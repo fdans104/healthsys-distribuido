@@ -136,3 +136,126 @@ body {
 }
 
 .vazio { color: var(--texto-suave); margin: 8px 0; }
+
+/* Perfil Recepcionista */
+.etiqueta-recepcionista { color: #9c36b5; }
+@media (prefers-color-scheme: dark) { .etiqueta-recepcionista { color: #e599f7; } }
+
+/* Lista de pacientes sem formulário ao lado (perfis que não cadastram) */
+.conteudo-unico { grid-template-columns: 1fr; }
+
+/* Ficha do paciente */
+.ficha { display: flex; flex-direction: column; gap: 16px; }
+.ficha-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; }
+.ficha-titulo { flex: 1; min-width: 0; }
+.ficha-titulo h2 { margin: 0; font-size: 20px; }
+.ficha-titulo p { margin: 2px 0 0; }
+.abas-ficha { flex-wrap: wrap; }
+.titulo-aba { margin: 0 0 14px; font-size: 16px; }
+.nota { color: var(--texto-suave); background: var(--fundo); border: 1px dashed var(--borda); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-size: 14px; }
+
+.dados { margin: 0 0 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 20px; }
+.dados-linha dt { font-size: 13px; color: var(--texto-suave); }
+.dados-linha dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+
+.form-ficha { max-width: 560px; margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--borda); }
+.campo textarea {
+  font: inherit; color: inherit; background: var(--fundo); resize: vertical;
+  border: 1px solid var(--borda); border-radius: 8px; padding: 9px 10px;
+}
+.campo textarea:focus { outline: 2px solid var(--primaria); outline-offset: 1px; }
+.campo-com-erro textarea { border-color: var(--erro-texto); }
+
+.registros { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.registro { border: 1px solid var(--borda); border-radius: 8px; padding: 12px 14px; }
+.registro p { margin: 0; }
+.registro-topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 4px; }
+.registro-titulo { font-weight: 600; }
+.registro-texto { white-space: pre-wrap; margin: 4px 0 !important; }
+.etiqueta-atendimento { color: var(--primaria); }
+.etiqueta-vacina { color: #3b5bdb; }
+.etiqueta-alergia { color: var(--perigo); }
+@media (prefers-color-scheme: dark) { .etiqueta-vacina { color: #91a7ff; } }
+
+/* Janela (modal) */
+.modal-fundo { position: fixed; inset: 0; background: rgba(15, 23, 32, .55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.modal { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 20px; width: 100%; max-width: 460px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.modal-larga { max-width: 680px; }
+.modal-topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.modal-topo h2 { margin: 0; font-size: 17px; }
+
+/* Início: boas-vindas e painel de números */
+.inicio { display: flex; flex-direction: column; gap: 16px; }
+.inicio-boas-vindas h2 { margin-bottom: 4px; }
+.lista-papel { margin: 8px 0 0; padding-left: 20px; }
+.lista-papel li { margin: 2px 0; }
+.painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.painel-cartao { font: inherit; color: inherit; text-align: left; display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+.painel-cartao:disabled { cursor: default; }
+.painel-cartao:not(:disabled):hover { border-color: var(--primaria); }
+.painel-numero { font-size: 34px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.painel-titulo { font-weight: 600; }
+.painel-alerta { border-color: #e8590c; }
+.painel-alerta .painel-numero { color: #e8590c; }
+
+/* Filtros */
+.filtros { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.filtro { font: inherit; cursor: pointer; color: var(--texto-suave); background: transparent; border: 1px solid var(--borda); border-radius: 999px; padding: 4px 12px; }
+.filtro-ativo { color: var(--primaria-texto); background: var(--primaria); border-color: var(--primaria); }
+.filtro-contagem { font-variant-numeric: tabular-nums; opacity: .8; margin-left: 4px; }
+.filtros-linha { display: grid; grid-template-columns: 1fr 200px; gap: 8px; }
+@media (max-width: 560px) { .filtros-linha { grid-template-columns: 1fr; } }
+
+/* Classificação de risco (cores do protocolo de Manchester) */
+.risco { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; color: #fff; white-space: nowrap; }
+.risco-critico { background: #c92a2a; }
+.risco-alto { background: #e8590c; }
+.risco-medio { background: #f59f00; color: #2b1d00; }
+.risco-baixo { background: #2b8a3e; }
+.risco-sem { background: transparent; color: var(--texto-suave); border: 1px dashed var(--borda); }
+
+.triagem-cartao { border: 1px solid var(--borda); border-left-width: 6px; border-radius: 8px; padding: 12px 14px; }
+.triagem-cartao p { margin: 0; }
+.triagem-critico { border-left-color: #c92a2a; }
+.triagem-alto { border-left-color: #e8590c; }
+.triagem-medio { border-left-color: #f59f00; }
+.triagem-baixo { border-left-color: #2b8a3e; }
+.triagem-sem { border-left-color: var(--borda); }
+.triagem-titulo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.acoes-cartao { margin-top: 10px; flex-wrap: wrap; }
+
+.status-pendente { color: #b35c00; }
+.status-em_atendimento { color: var(--primaria); }
+.status-finalizada { color: var(--ok-texto); }
+.status-cancelada { color: var(--texto-suave); }
+
+/* Formulário de avaliação da triagem */
+.campo-quatro { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 10px; }
+@media (max-width: 640px) { .campo-quatro { grid-template-columns: 1fr 1fr; } }
+.campo-quatro .campo { min-width: 0; }
+.riscos { border: 1px solid var(--borda); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; display: grid; gap: 6px; }
+.riscos legend { font-size: 13px; color: var(--texto-suave); padding: 0 4px; }
+.risco-opcao { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; }
+.risco-opcao-marcada { border-color: var(--borda); background: var(--fundo); }
+.erro-campo { color: var(--erro-texto); font-size: 13px; }
+
+/* Escolha do paciente na nova triagem */
+.escolhido { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid var(--borda); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
+.sugestoes { list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; }
+.sugestoes button { font: inherit; color: inherit; background: var(--cartao); border: none; border-bottom: 1px solid var(--borda); width: 100%; text-align: left; padding: 8px 10px; cursor: pointer; }
+.sugestoes li:last-child button { border-bottom: none; }
+.sugestoes button:hover { background: var(--fundo); }
+
+/* Ficha: subtítulos, formulário dentro de um registro, registros encerrados */
+.subtitulo-aba { margin: 16px 0 8px; font-size: 14px; color: var(--texto-suave); }
+.form-inline { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--borda); }
+.registro-apagado { opacity: .7; }
+.etiqueta-triagem { color: #e8590c; }
+.etiqueta-consulta { color: var(--primaria); }
+.etiqueta-exame { color: #9c36b5; }
+.etiqueta-medicamento { color: #1c7ed6; }
+@media (prefers-color-scheme: dark) {
+  .etiqueta-exame { color: #e599f7; }
+  .etiqueta-medicamento { color: #74c0fc; }
+  .status-pendente { color: #ffc078; }
+}

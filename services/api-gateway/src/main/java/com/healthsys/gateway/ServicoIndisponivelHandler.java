@@ -85,7 +85,7 @@ public class ServicoIndisponivelHandler implements WebExceptionHandler {
         return false;
     }
 
-    /** O id da rota (ver application.yml) é o nome do microsserviço: auth-service ou patient-service. */
+    /** O id da rota (ver application.yml) é o nome do microsserviço: auth-service, patient-service, record-service ou triage-service. */
     private static String nomeDoServico(ServerWebExchange exchange) {
         Route rota = exchange.getAttribute(ServerWebExchangeUtils.GATEWAY_ROUTE_ATTR);
         return rota != null ? rota.getId() : "desconhecido";

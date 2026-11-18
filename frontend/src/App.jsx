@@ -1,13 +1,26 @@
 import { useEffect, useState } from 'react';
 import { definirAoSessaoExpirar, sessao } from './api.js';
 import { ROTULO_PERFIL } from './formatos.js';
+import { podeGerenciarUsuarios, podeVerTriagens } from './permissoes.js';
 import Login from './components/Login.jsx';
+import InicioPagina from './paginas/InicioPagina.jsx';
 import PacientesPagina from './paginas/PacientesPagina.jsx';
+import TriagemPagina from './paginas/TriagemPagina.jsx';
 import UsuariosPagina from './paginas/UsuariosPagina.jsx';
+
+/** Seções do menu. Cada perfil vê só as suas (ver permissoes.js). */
+function secoesDoPerfil(perfil) {
+  return [
+    { id: 'inicio', rotulo: 'Início' },
+    { id: 'pacientes', rotulo: 'Pacientes' },
+    podeVerTriagens(perfil) && { id: 'triagem', rotulo: 'Triagem' },
+    podeGerenciarUsuarios(perfil) && { id: 'usuarios', rotulo: 'Usuários' },
+  ].filter(Boolean);
+}
 
 export default function App() {
   const [usuario, setUsuario] = useState(() => sessao.obter()?.usuario ?? null);
-  const [aba, setAba] = useState('pacientes');
+  const [aba, setAba] = useState('inicio');
   const [avisoSessao, setAvisoSessao] = useState('');
 
   // Se o servidor recusar o token (expirado/inválido), volta para a tela de login.
@@ -21,7 +34,7 @@ export default function App() {
   function entrar(resposta) {
     sessao.salvar(resposta);
     setUsuario(resposta.usuario);
-    setAba('pacientes');
+    setAba('inicio');
     setAvisoSessao('');
   }
 
@@ -39,8 +52,8 @@ export default function App() {
     );
   }
 
-  const ehAdmin = usuario.perfil === 'ADMIN';
-  const abaAtual = aba === 'usuarios' && ehAdmin ? 'usuarios' : 'pacientes';
+  const secoes = secoesDoPerfil(usuario.perfil);
+  const abaAtual = secoes.some((s) => s.id === aba) ? aba : 'inicio';
 
   return (
     <div className="pagina">
@@ -48,18 +61,14 @@ export default function App() {
         <h1>HealthSys</h1>
 
         <nav className="abas" aria-label="Seções">
-          <button className={`aba ${abaAtual === 'pacientes' ? 'aba-ativa' : ''}`}
-                  aria-current={abaAtual === 'pacientes' ? 'page' : undefined}
-                  onClick={() => setAba('pacientes')}>
-            Pacientes
-          </button>
-          {ehAdmin && (
-            <button className={`aba ${abaAtual === 'usuarios' ? 'aba-ativa' : ''}`}
-                    aria-current={abaAtual === 'usuarios' ? 'page' : undefined}
-                    onClick={() => setAba('usuarios')}>
-              Usuários
+          {secoes.map((s) => (
+            <button key={s.id}
+                    className={`aba ${abaAtual === s.id ? 'aba-ativa' : ''}`}
+                    aria-current={abaAtual === s.id ? 'page' : undefined}
+                    onClick={() => setAba(s.id)}>
+              {s.rotulo}
             </button>
-          )}
+          ))}
         </nav>
 
         <div className="sessao">
@@ -71,9 +80,10 @@ export default function App() {
         </div>
       </header>
 
-      {abaAtual === 'usuarios'
-        ? <UsuariosPagina usuarioLogado={usuario} />
-        : <PacientesPagina usuarioLogado={usuario} />}
+      {abaAtual === 'inicio' && <InicioPagina usuarioLogado={usuario} irPara={setAba} />}
+      {abaAtual === 'pacientes' && <PacientesPagina usuarioLogado={usuario} />}
+      {abaAtual === 'triagem' && <TriagemPagina usuarioLogado={usuario} />}
+      {abaAtual === 'usuarios' && <UsuariosPagina usuarioLogado={usuario} />}
     </div>
   );
 }

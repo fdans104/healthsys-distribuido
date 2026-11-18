@@ -106,3 +106,46 @@ export const pacientesApi = {
   atualizar: (id, dados) => requisicao(`${PACIENTES}/${id}`, json('PUT', dados)),
   remover: (id) => requisicao(`${PACIENTES}/${id}`, { method: 'DELETE' }),
 };
+
+// Ficha clínica do paciente (só médicos e enfermeiros têm acesso).
+export const fichaApi = {
+  historico: (pacienteId) => requisicao(`${PACIENTES}/${pacienteId}/historico`),
+  listarAlergias: (pacienteId) => requisicao(`${PACIENTES}/${pacienteId}/alergias`),
+  registrarAlergia: (pacienteId, dados) => requisicao(`${PACIENTES}/${pacienteId}/alergias`, json('POST', dados)),
+  listarVacinas: (pacienteId) => requisicao(`${PACIENTES}/${pacienteId}/vacinas`),
+  registrarVacina: (pacienteId, dados) => requisicao(`${PACIENTES}/${pacienteId}/vacinas`, json('POST', dados)),
+  listarAtendimentos: (pacienteId) => requisicao(`${PACIENTES}/${pacienteId}/atendimentos`),
+  registrarAtendimento: (pacienteId, dados) =>
+    requisicao(`${PACIENTES}/${pacienteId}/atendimentos`, json('POST', dados)),
+};
+
+// Prontuário eletrônico (record-service): consultas, exames e medicamentos. Só médicos e enfermeiros.
+const PRONTUARIOS = '/api/v1/prontuarios';
+export const prontuarioApi = {
+  completo: (pacienteId) => requisicao(`${PRONTUARIOS}/${pacienteId}`),
+  listarConsultas: (pacienteId) => requisicao(`${PRONTUARIOS}/${pacienteId}/consultas`),
+  registrarConsulta: (pacienteId, dados) => requisicao(`${PRONTUARIOS}/${pacienteId}/consultas`, json('POST', dados)),
+  listarExames: (pacienteId) => requisicao(`${PRONTUARIOS}/${pacienteId}/exames`),
+  solicitarExame: (pacienteId, dados) => requisicao(`${PRONTUARIOS}/${pacienteId}/exames`, json('POST', dados)),
+  registrarResultado: (pacienteId, exameId, dados) =>
+    requisicao(`${PRONTUARIOS}/${pacienteId}/exames/${exameId}/resultado`, json('PUT', dados)),
+  listarMedicamentos: (pacienteId) => requisicao(`${PRONTUARIOS}/${pacienteId}/medicamentos`),
+  prescrever: (pacienteId, dados) => requisicao(`${PRONTUARIOS}/${pacienteId}/medicamentos`, json('POST', dados)),
+  suspender: (pacienteId, medicamentoId, dados) =>
+    requisicao(`${PRONTUARIOS}/${pacienteId}/medicamentos/${medicamentoId}/suspensao`, json('PUT', dados)),
+};
+
+// Teletriagem (triage-service): fila do pronto-atendimento.
+const TRIAGENS = '/api/v1/triagens';
+export const triagemApi = {
+  listar: ({ status, pacienteId } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (pacienteId) params.set('pacienteId', pacienteId);
+    const qs = params.toString();
+    return requisicao(qs ? `${TRIAGENS}?${qs}` : TRIAGENS);
+  },
+  abrir: (dados) => requisicao(TRIAGENS, json('POST', dados)),
+  avaliar: (id, dados) => requisicao(`${TRIAGENS}/${id}/avaliacao`, json('PUT', dados)),
+  mudarStatus: (id, dados) => requisicao(`${TRIAGENS}/${id}/status`, json('PUT', dados)),
+};

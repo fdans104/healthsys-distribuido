@@ -1,6 +1,9 @@
 import { ROTULO_SEXO, formatarCpf, formatarData, formatarTelefone } from '../formatos.js';
 
-export default function PacienteLista({ pacientes, carregando, buscando, podeExcluir, onEditar, onExcluir }) {
+/** Tabela de pacientes. Os botões aparecem conforme o perfil (ver permissoes.js). */
+export default function PacienteLista({
+  pacientes, carregando, buscando, podeEditar, podeExcluir, onAbrirFicha, onEditar, onExcluir,
+}) {
   if (carregando && pacientes.length === 0) return <p className="vazio">Carregando…</p>;
   if (pacientes.length === 0) {
     return (
@@ -39,7 +42,10 @@ export default function PacienteLista({ pacientes, carregando, buscando, podeExc
               <td className="num">{p.telefone ? formatarTelefone(p.telefone) : '—'}</td>
               <td>
                 <div className="acoes-linha">
-                  <button className="botao botao-leve" onClick={() => onEditar(p)}>Editar</button>
+                  <button className="botao botao-leve" onClick={() => onAbrirFicha(p)}>Ficha</button>
+                  {podeEditar && (
+                    <button className="botao botao-leve" onClick={() => onEditar(p)}>Editar</button>
+                  )}
                   {podeExcluir && (
                     <button className="botao botao-perigo" onClick={() => onExcluir(p)}>Excluir</button>
                   )}

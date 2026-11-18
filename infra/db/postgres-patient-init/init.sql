@@ -15,19 +15,31 @@ CREATE TABLE IF NOT EXISTS pacientes (
     versao BIGINT NOT NULL DEFAULT 0 -- RN54: número de edição do registro
 );
 
+-- RF06: atendimentos médicos. Registros de prontuário: não são editados nem apagados.
 CREATE TABLE IF NOT EXISTS atendimentos (
     id_atendimento SERIAL PRIMARY KEY,
     id_paciente INT REFERENCES pacientes(id_paciente) ON DELETE CASCADE,
     tipo_atendimento VARCHAR(50) NOT NULL,
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    observacoes TEXT
+    observacoes TEXT,
+    registrado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    registrado_por_id INT, -- quem registrou (id do usuário no auth-service, sem chave estrangeira entre bancos)
+    registrado_por_nome VARCHAR(150),
+    registrado_por_perfil VARCHAR(30)
 );
 
+-- RF09: vacinas aplicadas.
 CREATE TABLE IF NOT EXISTS vacinas (
     id_vacina SERIAL PRIMARY KEY,
     id_paciente INT REFERENCES pacientes(id_paciente) ON DELETE CASCADE,
     nome_vacina VARCHAR(100) NOT NULL,
-    data_aplicacao DATE NOT NULL
+    data_aplicacao DATE NOT NULL,
+    dose VARCHAR(30),
+    lote VARCHAR(30),
+    registrado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    registrado_por_id INT,
+    registrado_por_nome VARCHAR(150),
+    registrado_por_perfil VARCHAR(30)
 );
 
 -- RF08: alergias sempre vinculadas a um paciente (idAlergia, idPaciente, descricao).
@@ -35,7 +47,10 @@ CREATE TABLE IF NOT EXISTS alergias (
     id_alergia SERIAL PRIMARY KEY,
     id_paciente INT NOT NULL REFERENCES pacientes(id_paciente) ON DELETE CASCADE,
     descricao VARCHAR(150) NOT NULL,
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    registrado_por_id INT,
+    registrado_por_nome VARCHAR(150),
+    registrado_por_perfil VARCHAR(30)
 );
 
 -- A tabela "triagens" não fica aqui: ela pertence ao triage-service, que terá o seu próprio banco.

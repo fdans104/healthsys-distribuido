@@ -23,7 +23,7 @@ public record UsuarioUpdateRequest(
         @Size(min = 8, max = 72, message = "senha deve ter entre 8 e 72 caracteres")
         String senha,
 
-        @NotNull(message = "perfil é obrigatório (ADMIN, MEDICO ou ENFERMEIRO)")
+        @NotNull(message = "perfil é obrigatório (ADMIN, RECEPCIONISTA, MEDICO ou ENFERMEIRO)")
         Perfil perfil
 ) {
 }

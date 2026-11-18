@@ -40,6 +40,12 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
+    /** Paciente com prontuário não pode ser excluído. */
+    @ExceptionHandler(PacienteComRegistrosClinicosException.class)
+    public ProblemDetail pacienteComRegistros(PacienteComRegistrosClinicosException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     /** Rede de segurança: dois cadastros simultâneos com o mesmo CPF batem no índice UNIQUE do banco. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail violacaoIntegridade(DataIntegrityViolationException ex) {
@@ -60,7 +66,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ProblemDetail corpoInvalido(HttpMessageNotReadableException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
-                "Corpo da requisição inválido. Verifique o JSON, se o sexo é M, F ou O e se a data está no formato AAAA-MM-DD.");
+                "Corpo da requisição inválido. Verifique o JSON, se o sexo é M, F ou O, se o tipo de atendimento é "
+                        + "CONSULTA, RETORNO, URGENCIA ou EMERGENCIA e se as datas estão no formato AAAA-MM-DD.");
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

@@ -9,7 +9,8 @@ const SEXOS = [
 ];
 
 /** Formulário de cadastro de paciente. Se receber "paciente", vira formulário de edição. */
-export default function PacienteForm({ paciente, onSalvo, onCancelar, onConflito }) {  const editando = Boolean(paciente);
+export default function PacienteForm({ paciente, onSalvo, onCancelar, onConflito, mostrarTitulo = true }) {
+  const editando = Boolean(paciente);
   const [campos, setCampos] = useState({
     nome: paciente?.nome ?? '',
     cpf: formatarCpf(paciente?.cpf ?? ''),
@@ -68,7 +69,7 @@ export default function PacienteForm({ paciente, onSalvo, onCancelar, onConflito
 
   return (
     <form onSubmit={enviar} noValidate>
-      <h2>{editando ? `Editar paciente #${paciente.id}` : 'Novo paciente'}</h2>
+      {mostrarTitulo && <h2>{editando ? `Editar paciente #${paciente.id}` : 'Novo paciente'}</h2>}
 
       <Campo rotulo="Nome completo" erro={errosCampo.nome}>
         <input name="nome" value={campos.nome} onChange={alterar} placeholder="Maria da Silva" />
@@ -111,7 +112,7 @@ export default function PacienteForm({ paciente, onSalvo, onCancelar, onConflito
         <button className="botao" type="submit" disabled={enviando}>
           {enviando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Cadastrar'}
         </button>
-        {editando && (
+        {onCancelar && (
           <button className="botao botao-leve" type="button" onClick={onCancelar}>
             Cancelar
           </button>

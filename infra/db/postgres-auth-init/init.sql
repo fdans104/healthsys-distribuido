@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS usuarios (
     id_usuario SERIAL PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
-    perfil VARCHAR(50) NOT NULL, -- Ex: MEDICO, ENFERMEIRO, ADMIN
+    perfil VARCHAR(50) NOT NULL, -- ADMIN, RECEPCIONISTA, MEDICO ou ENFERMEIRO
     email VARCHAR(150) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL, -- Hash BCrypt da senha (nunca a senha em texto puro)
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP

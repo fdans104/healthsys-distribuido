@@ -15,7 +15,7 @@ import jakarta.persistence.Version;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/** Mapeia a tabela "pacientes" (infra/db/postgres-init/init.sql e schema.sql deste serviço). */
+/** Mapeia a tabela "pacientes" (infra/db/postgres-patient-init/init.sql e schema.sql deste serviço). */
 @Entity
 @Table(name = "pacientes")
 public class Paciente {

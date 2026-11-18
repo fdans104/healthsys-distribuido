@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usuariosApi } from '../api.js';
+import { ROTULO_PERFIL } from '../formatos.js';
 import useAvisos, { Faixas } from '../hooks/useAvisos.jsx';
 import UsuarioForm from '../components/UsuarioForm.jsx';
 import UsuarioLista from '../components/UsuarioLista.jsx';
@@ -10,6 +11,8 @@ export default function UsuariosPagina({ usuarioLogado }) {
   const [carregando, setCarregando] = useState(true);
   const [emEdicao, setEmEdicao] = useState(null); // usuário sendo editado, ou null = novo
   const [versaoForm, setVersaoForm] = useState(0); // muda a cada salvamento para o formulário voltar limpo
+  const [busca, setBusca] = useState('');
+  const [perfilFiltro, setPerfilFiltro] = useState('');
   const { aviso, erro, setErro, mostrarAviso } = useAvisos();
 
   async function carregar() {
@@ -47,6 +50,12 @@ export default function UsuariosPagina({ usuarioLogado }) {
     }
   }
 
+  // Filtro na própria tela: por nome ou e-mail e por perfil.
+  const termo = busca.trim().toLowerCase();
+  const visiveis = usuarios.filter((u) =>
+    (!perfilFiltro || u.perfil === perfilFiltro)
+    && (!termo || u.nome.toLowerCase().includes(termo) || u.email.toLowerCase().includes(termo)));
+
   return (
     <>
       <Faixas aviso={aviso} erro={erro} />
@@ -66,8 +75,17 @@ export default function UsuariosPagina({ usuarioLogado }) {
             <h2>Usuários cadastrados</h2>
             <button className="botao botao-leve" onClick={carregar}>Atualizar</button>
           </div>
+          <div className="filtros-linha">
+            <input className="busca" type="search" value={busca} onChange={(e) => setBusca(e.target.value)}
+                   placeholder="Buscar por nome ou e-mail" aria-label="Buscar usuários" />
+            <select className="busca" value={perfilFiltro} onChange={(e) => setPerfilFiltro(e.target.value)}
+                    aria-label="Filtrar por perfil">
+              <option value="">Todos os perfis</option>
+              {Object.entries(ROTULO_PERFIL).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}
+            </select>
+          </div>
           <UsuarioLista
-            usuarios={usuarios}
+            usuarios={visiveis}
             carregando={carregando}
             idLogado={usuarioLogado.id}
             onEditar={setEmEdicao}

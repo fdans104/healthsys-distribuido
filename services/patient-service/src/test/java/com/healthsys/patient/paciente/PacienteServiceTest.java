@@ -1,7 +1,9 @@
 package com.healthsys.patient.paciente;
 
+import com.healthsys.patient.clinico.ClinicoService;
 import com.healthsys.patient.exception.ConflitoEdicaoException;
 import com.healthsys.patient.exception.CpfJaCadastradoException;
+import com.healthsys.patient.exception.PacienteComRegistrosClinicosException;
 import com.healthsys.patient.exception.RecursoNaoEncontradoException;
 import com.healthsys.patient.paciente.dto.PacienteRequest;
 import com.healthsys.patient.paciente.dto.PacienteResponse;
@@ -26,12 +28,14 @@ import static org.mockito.Mockito.when;
 class PacienteServiceTest {
 
     private PacienteRepository repository;
+    private ClinicoService clinico;
     private PacienteService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(PacienteRepository.class);
-        service = new PacienteService(repository);
+        clinico = mock(ClinicoService.class);
+        service = new PacienteService(repository, clinico);
         when(repository.save(any(Paciente.class))).thenAnswer(inv -> inv.getArgument(0));
         when(repository.saveAndFlush(any(Paciente.class))).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -125,6 +129,26 @@ class PacienteServiceTest {
 
         verify(repository).findByCpfStartingWithOrderByNomeAsc("529982");
         verify(repository).findByNomeContainingIgnoreCaseOrderByNomeAsc("maria");
+    }
+
+    @Test
+    void removerPacienteSemRegistrosClinicosApagaOCadastro() {
+        Paciente paciente = pacienteNaVersao("11144477735", 0L);
+        when(repository.findById(1)).thenReturn(Optional.of(paciente));
+        when(clinico.possuiRegistrosClinicos(1)).thenReturn(false);
+
+        service.remover(1);
+
+        verify(repository).delete(paciente);
+    }
+
+    @Test
+    void removerPacienteComProntuarioEhRecusado() {
+        when(repository.findById(1)).thenReturn(Optional.of(pacienteNaVersao("11144477735", 0L)));
+        when(clinico.possuiRegistrosClinicos(1)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.remover(1)).isInstanceOf(PacienteComRegistrosClinicosException.class);
+        verify(repository, never()).delete(any());
     }
 
     @Test

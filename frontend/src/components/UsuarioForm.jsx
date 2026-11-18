@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usuariosApi } from '../api.js';
 
 const PERFIS = [
+  { valor: 'RECEPCIONISTA', rotulo: 'Recepcionista' },
   { valor: 'MEDICO', rotulo: 'Médico' },
   { valor: 'ENFERMEIRO', rotulo: 'Enfermeiro' },
   { valor: 'ADMIN', rotulo: 'Administrador' },

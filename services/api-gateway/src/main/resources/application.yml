@@ -29,6 +29,24 @@ spring:
               args:
                 name: patientService
 
+        - id: record-service
+          uri: ${RECORD_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/prontuarios/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: recordService
+
+        - id: triage-service
+          uri: ${TRIAGE_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/triagens,/api/v1/triagens/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: triageService
+
 # Mesmo segredo do auth-service: o gateway barra tokens inválidos antes de chegarem aos serviços.
 jwt:
   secret: ${JWT_SECRET:healthsys-dev-secret-troque-em-producao-0123456789}

@@ -12,9 +12,15 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Regras de acesso do patient-service.
- * - Cadastrar, listar, consultar e editar pacientes: ADMIN, MEDICO e ENFERMEIRO.
- * - Excluir paciente: apenas ADMIN.
+ * Regras de acesso do patient-service, pensadas como num hospital:
+ * - Buscar pacientes e ver os dados cadastrais: todos os perfis.
+ * - Cadastrar e editar os dados cadastrais: RECEPCIONISTA (é a recepção que abre e atualiza a ficha).
+ * - Excluir paciente: ADMIN, e só se ele não tiver registros clínicos (ver PacienteService).
+ * - Histórico clínico, alergias, vacinas e atendimentos: só MEDICO e ENFERMEIRO (dado clínico é sigiloso).
+ *   - Registrar atendimento: MEDICO.
+ *   - Registrar vacina aplicada: ENFERMEIRO.
+ *   - Registrar alergia: MEDICO e ENFERMEIRO.
+ * A ordem importa: a primeira regra que combinar com a requisição é a que vale.
  */
 @Configuration
 @EnableWebSecurity
@@ -29,8 +35,23 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/pacientes/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/pacientes", "/api/v1/pacientes/**").hasAnyRole("ADMIN", "MEDICO", "ENFERMEIRO")
+                        // Ficha clínica
+                        .requestMatchers(HttpMethod.POST, "/api/v1/pacientes/*/atendimentos").hasRole("MEDICO")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/pacientes/*/vacinas").hasRole("ENFERMEIRO")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/pacientes/*/alergias").hasAnyRole("MEDICO", "ENFERMEIRO")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/pacientes/*/historico",
+                                "/api/v1/pacientes/*/alergias",
+                                "/api/v1/pacientes/*/vacinas",
+                                "/api/v1/pacientes/*/atendimentos").hasAnyRole("MEDICO", "ENFERMEIRO")
+                        // Cadastro do paciente
+                        .requestMatchers(HttpMethod.POST, "/api/v1/pacientes").hasRole("RECEPCIONISTA")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/pacientes/*").hasRole("RECEPCIONISTA")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/pacientes/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/pacientes", "/api/v1/pacientes/*")
+                                .hasAnyRole("ADMIN", "RECEPCIONISTA", "MEDICO", "ENFERMEIRO")
+                        // Qualquer outra rota de pacientes não prevista acima fica bloqueada.
+                        .requestMatchers("/api/v1/pacientes", "/api/v1/pacientes/**").denyAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(conversorPerfil()))

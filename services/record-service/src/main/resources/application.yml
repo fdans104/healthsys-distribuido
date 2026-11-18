@@ -1,0 +1,36 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: record-service
+  data:
+    mongodb:
+      # RNF09: o prontuário fica no MongoDB, banco que só este serviço usa.
+      uri: ${MONGO_URI:mongodb://mongouser:mongopass@localhost:27017/healthsys_records?authSource=admin}
+      auto-index-creation: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+# Mesmo segredo do auth-service: o token é validado localmente (assinatura + expiração + emissor).
+jwt:
+  secret: ${JWT_SECRET:healthsys-dev-secret-troque-em-producao-0123456789}
+
+# Endereço interno do serviço de pacientes (usado para confirmar que o paciente existe).
+servicos:
+  pacientes-url: ${PATIENT_SERVICE_URL:http://localhost:8082}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

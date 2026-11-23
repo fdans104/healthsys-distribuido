@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { definirAoSessaoExpirar, sessao } from './api.js';
 import { ROTULO_PERFIL } from './formatos.js';
-import { podeGerenciarUsuarios, podeVerTriagens } from './permissoes.js';
+import { podeGerenciarUsuarios, podeVerLeitos, podeVerTriagens, recebeNotificacoes } from './permissoes.js';
 import Login from './components/Login.jsx';
+import Notificacoes from './components/Notificacoes.jsx';
 import InicioPagina from './paginas/InicioPagina.jsx';
+import LeitosPagina from './paginas/LeitosPagina.jsx';
 import PacientesPagina from './paginas/PacientesPagina.jsx';
 import TriagemPagina from './paginas/TriagemPagina.jsx';
 import UsuariosPagina from './paginas/UsuariosPagina.jsx';
@@ -14,6 +16,7 @@ function secoesDoPerfil(perfil) {
     { id: 'inicio', rotulo: 'Início' },
     { id: 'pacientes', rotulo: 'Pacientes' },
     podeVerTriagens(perfil) && { id: 'triagem', rotulo: 'Triagem' },
+    podeVerLeitos(perfil) && { id: 'leitos', rotulo: 'Leitos' },
     podeGerenciarUsuarios(perfil) && { id: 'usuarios', rotulo: 'Usuários' },
   ].filter(Boolean);
 }
@@ -72,6 +75,7 @@ export default function App() {
         </nav>
 
         <div className="sessao">
+          {recebeNotificacoes(usuario.perfil) && <Notificacoes key={usuario.id} irPara={setAba} />}
           <span className="sessao-nome">{usuario.nome}</span>
           <span className={`etiqueta etiqueta-${usuario.perfil.toLowerCase()}`}>
             {ROTULO_PERFIL[usuario.perfil] ?? usuario.perfil}
@@ -83,6 +87,7 @@ export default function App() {
       {abaAtual === 'inicio' && <InicioPagina usuarioLogado={usuario} irPara={setAba} />}
       {abaAtual === 'pacientes' && <PacientesPagina usuarioLogado={usuario} />}
       {abaAtual === 'triagem' && <TriagemPagina usuarioLogado={usuario} />}
+      {abaAtual === 'leitos' && <LeitosPagina usuarioLogado={usuario} />}
       {abaAtual === 'usuarios' && <UsuariosPagina usuarioLogado={usuario} />}
     </div>
   );

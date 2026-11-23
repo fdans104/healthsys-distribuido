@@ -20,6 +20,9 @@ public class Exame {
     @Indexed
     private Integer pacienteId;
 
+    /** Nome do paciente no momento do registro (usado nas notificações). */
+    private String pacienteNome;
+
     private String nome;
     private TipoExame tipo;
     private String observacoes;
@@ -64,8 +67,14 @@ public class Exame {
         this.status = StatusExame.CONCLUIDO;
     }
 
+    /** Guarda o nome informado pelo patient-service, para os avisos não precisarem consultá-lo de novo. */
+    public void registrarNomeDoPaciente(String nome) {
+        this.pacienteNome = nome;
+    }
+
     public String getId() { return id; }
     public Integer getPacienteId() { return pacienteId; }
+    public String getPacienteNome() { return pacienteNome; }
     public String getNome() { return nome; }
     public TipoExame getTipo() { return tipo; }
     public String getObservacoes() { return observacoes; }

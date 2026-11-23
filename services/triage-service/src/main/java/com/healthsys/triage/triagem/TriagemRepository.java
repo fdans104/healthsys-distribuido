@@ -13,4 +13,9 @@ public interface TriagemRepository extends JpaRepository<Triagem, Integer> {
 
     /** Usado para não abrir duas triagens ao mesmo tempo para o mesmo paciente. */
     boolean existsByPacienteIdAndStatusIn(Integer pacienteId, Collection<StatusTriagem> status);
+
+    /** Usados nas métricas da fila (Prometheus/Grafana). */
+    long countByStatusInAndClassificacaoRisco(Collection<StatusTriagem> status, ClassificacaoRisco risco);
+
+    long countByStatusInAndClassificacaoRiscoIsNull(Collection<StatusTriagem> status);
 }

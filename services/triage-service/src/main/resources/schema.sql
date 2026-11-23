@@ -29,3 +29,19 @@ CREATE TABLE IF NOT EXISTS triagens (
 
 CREATE INDEX IF NOT EXISTS idx_triagens_paciente ON triagens (id_paciente);
 CREATE INDEX IF NOT EXISTS idx_triagens_status ON triagens (status);
+
+-- Caixa de saída (transactional outbox): eventos gravados junto com a triagem e enviados depois ao Kafka.
+-- Se o Kafka estiver fora do ar, os eventos esperam aqui e nenhum aviso se perde.
+CREATE TABLE IF NOT EXISTS eventos_pendentes (
+    id_evento BIGSERIAL PRIMARY KEY,
+    evento_id VARCHAR(36) NOT NULL UNIQUE,
+    topico VARCHAR(100) NOT NULL,
+    chave VARCHAR(100),
+    payload TEXT NOT NULL,
+    criado_em TIMESTAMPTZ NOT NULL,
+    enviado_em TIMESTAMPTZ,
+    tentativas INT NOT NULL DEFAULT 0,
+    ultimo_erro VARCHAR(500)
+);
+
+CREATE INDEX IF NOT EXISTS idx_eventos_nao_enviados ON eventos_pendentes (id_evento) WHERE enviado_em IS NULL;

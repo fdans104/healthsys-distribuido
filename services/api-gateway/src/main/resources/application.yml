@@ -47,11 +47,40 @@ spring:
               args:
                 name: triageService
 
+        # Canal em tempo real (SSE): conexão longa, por isso fica SEM o circuit breaker (que cortaria em 10 s).
+        # Precisa vir antes da rota geral de notificações.
+        - id: notification-service-stream
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/notificacoes/stream
+
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/notificacoes,/api/v1/notificacoes/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: notificationService
+
+        - id: monitoring-service
+          uri: ${MONITORING_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/v1/leitos,/api/v1/leitos/**,/api/v1/monitoramento/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: monitoringService
+
 # Mesmo segredo do auth-service: o gateway barra tokens inválidos antes de chegarem aos serviços.
 jwt:
   secret: ${JWT_SECRET:healthsys-dev-secret-troque-em-producao-0123456789}
 
 management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   endpoints:
     web:
       exposure:

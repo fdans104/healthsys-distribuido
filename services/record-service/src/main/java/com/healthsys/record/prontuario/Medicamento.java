@@ -20,6 +20,9 @@ public class Medicamento {
     @Indexed
     private Integer pacienteId;
 
+    /** Nome do paciente no momento do registro (usado nas notificações). */
+    private String pacienteNome;
+
     private String nome;
     private String dosagem;
     private ViaAdministracao via;
@@ -67,8 +70,14 @@ public class Medicamento {
         this.suspensoPorNome = medico.nome();
     }
 
+    /** Guarda o nome informado pelo patient-service, para os avisos não precisarem consultá-lo de novo. */
+    public void registrarNomeDoPaciente(String nome) {
+        this.pacienteNome = nome;
+    }
+
     public String getId() { return id; }
     public Integer getPacienteId() { return pacienteId; }
+    public String getPacienteNome() { return pacienteNome; }
     public String getNome() { return nome; }
     public String getDosagem() { return dosagem; }
     public ViaAdministracao getVia() { return via; }

@@ -28,6 +28,17 @@ x-triage-db-env: &triage-db-env
   DB_USER: triage_user
   DB_PASSWORD: triage_pass
 
+x-monitoring-db-env: &monitoring-db-env
+  DB_HOST: postgres-monitoring
+  DB_PORT: 5432
+  DB_NAME: healthsys_monitoring
+  DB_USER: monitoring_user
+  DB_PASSWORD: monitoring_pass
+
+# Endereço do Kafka dentro da rede do Docker (mensageria entre os serviços).
+x-kafka-env: &kafka-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
 services:
   # Banco do auth-service (usuários e login). No seu computador: localhost:5432.
   postgres-auth:
@@ -94,6 +105,99 @@ services:
     networks:
       - healthsys-net
 
+  # Banco do monitoring-service (leitos e alertas). No seu computador: localhost:5435.
+  postgres-monitoring:
+    image: postgres:16-alpine
+    container_name: healthsys-postgres-monitoring
+    restart: always
+    environment:
+      POSTGRES_USER: monitoring_user
+      POSTGRES_PASSWORD: monitoring_pass
+      POSTGRES_DB: healthsys_monitoring
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_monitoring_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monitoring_user -d healthsys_monitoring"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - healthsys-net
+
+  # Mensageria: Kafka em modo KRaft (sem ZooKeeper), um único nó para o ambiente de desenvolvimento.
+  # Tópicos: triagem.eventos, prontuario.eventos e monitoramento.eventos (+ os .DLT de mensagens com problema).
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: healthsys-kafka
+    restart: always
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    networks:
+      - healthsys-net
+
+  # Tela para ver os tópicos e as mensagens do Kafka: http://localhost:8090
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: healthsys-kafka-ui
+    restart: always
+    environment:
+      KAFKA_CLUSTERS_0_NAME: healthsys
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8090:8080"
+    depends_on:
+      - kafka
+    networks:
+      - healthsys-net
+
+  # IoT: broker MQTT onde os monitores dos leitos publicam os sinais vitais (healthsys/leitos/<leito>/sinais).
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    container_name: healthsys-mosquitto
+    restart: always
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./infra/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      - healthsys-net
+
+  # Simulador dos monitores multiparamétricos dos leitos (publica uma leitura por leito a cada 3 s).
+  iot-simulator:
+    build: ./infra/iot-simulator
+    container_name: healthsys-iot-simulator
+    restart: always
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      INTERVALO_SEGUNDOS: 3
+      # De vez em quando um paciente "piora" sozinho, para gerar alertas (mude para false para desligar).
+      PIORA_AUTOMATICA: "true"
+    depends_on:
+      - mosquitto
+    networks:
+      - healthsys-net
+
   # Ponto único de entrada da API: roteia, valida o JWT e aplica circuit breaker.
   api-gateway:
     build: ./services/api-gateway
@@ -105,6 +209,8 @@ services:
       PATIENT_SERVICE_URL: http://patient-service:8082
       RECORD_SERVICE_URL: http://record-service:8083
       TRIAGE_SERVICE_URL: http://triage-service:8084
+      NOTIFICATION_SERVICE_URL: http://notification-service:8085
+      MONITORING_SERVICE_URL: http://monitoring-service:8086
     ports:
       - "8080:8080"
     depends_on:
@@ -112,6 +218,8 @@ services:
       - patient-service
       - record-service
       - triage-service
+      - notification-service
+      - monitoring-service
     networks:
       - healthsys-net
 
@@ -135,11 +243,15 @@ services:
     restart: always
     environment:
       <<: [*patient-db-env, *jwt-env]
+      # Cache distribuído: a ficha do paciente fica guardada no Redis por 10 minutos.
+      REDIS_HOST: redis
     ports:
       - "8082:8082"
     depends_on:
       postgres-patient:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - healthsys-net
 
@@ -149,7 +261,7 @@ services:
     container_name: healthsys-record-service
     restart: always
     environment:
-      <<: *jwt-env
+      <<: [*jwt-env, *kafka-env]
       MONGO_URI: mongodb://mongouser:mongopass@mongodb:27017/healthsys_records?authSource=admin
       PATIENT_SERVICE_URL: http://patient-service:8082
     ports:
@@ -157,6 +269,7 @@ services:
     depends_on:
       - mongodb
       - patient-service
+      - kafka
     networks:
       - healthsys-net
 
@@ -166,7 +279,7 @@ services:
     container_name: healthsys-triage-service
     restart: always
     environment:
-      <<: [*triage-db-env, *jwt-env]
+      <<: [*triage-db-env, *jwt-env, *kafka-env]
       PATIENT_SERVICE_URL: http://patient-service:8082
     ports:
       - "8084:8084"
@@ -174,6 +287,47 @@ services:
       postgres-triage:
         condition: service_healthy
       patient-service:
+        condition: service_started
+      kafka:
+        condition: service_started
+    networks:
+      - healthsys-net
+
+  # Notificações assíncronas: consome o Kafka e avisa cada perfil em tempo real (banco próprio no MongoDB).
+  notification-service:
+    build: ./services/notification-service
+    container_name: healthsys-notification-service
+    restart: always
+    environment:
+      <<: [*jwt-env, *kafka-env]
+      MONGO_URI: mongodb://mongouser:mongopass@mongodb:27017/healthsys_notifications?authSource=admin
+    ports:
+      - "8085:8085"
+    depends_on:
+      - mongodb
+      - kafka
+    networks:
+      - healthsys-net
+
+  # Monitoramento hospitalar: leitos, ocupação, sinais vitais via MQTT e alertas (banco próprio).
+  monitoring-service:
+    build: ./services/monitoring-service
+    container_name: healthsys-monitoring-service
+    restart: always
+    environment:
+      <<: [*monitoring-db-env, *jwt-env, *kafka-env]
+      PATIENT_SERVICE_URL: http://patient-service:8082
+      MQTT_URL: tcp://mosquitto:1883
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres-monitoring:
+        condition: service_healthy
+      patient-service:
+        condition: service_started
+      kafka:
+        condition: service_started
+      mosquitto:
         condition: service_started
     networks:
       - healthsys-net
@@ -216,29 +370,37 @@ services:
     networks:
       - healthsys-net
 
+  # Coleta as métricas de todos os serviços a cada 10 s (/actuator/prometheus) e avalia os alertas.
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.1
     container_name: healthsys-prometheus
     restart: always
     ports:
       - "9090:9090"
     volumes:
       - prometheus_data:/prometheus
-      # Em breve, você mapeará o prometheus.yml aqui para ler as métricas do Spring Boot
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/alertas.yml:/etc/prometheus/alertas.yml:ro
     networks:
       - healthsys-net
 
+  # Painel de monitoramento (dashboard "HealthSys" já vem pronto): http://localhost:3001 (admin / admin)
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.2.0
     container_name: healthsys-grafana
     restart: always
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/dashboards/healthsys.json
     ports:
       - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
     networks:
       - healthsys-net
 
@@ -246,6 +408,7 @@ volumes:
   postgres_auth_data:
   postgres_patient_data:
   postgres_triage_data:
+  postgres_monitoring_data:
   mongo_data:
   redis_data:
   prometheus_data:

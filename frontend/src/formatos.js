@@ -37,6 +37,10 @@ export const ROTULO_TIPO_ATENDIMENTO = {
   EMERGENCIA: 'Emergência',
 };
 export const ROTULO_SEXO = { M: 'Masculino', F: 'Feminino', O: 'Outro' };
+export const ROTULO_SETOR = { UTI: 'UTI', ENFERMARIA: 'Enfermaria', EMERGENCIA: 'Emergência' };
+export const SETORES = ['UTI', 'ENFERMARIA', 'EMERGENCIA'];
+export const ROTULO_STATUS_LEITO = { LIVRE: 'Livre', OCUPADO: 'Ocupado', HIGIENIZACAO: 'Em higienização' };
+export const ROTULO_GRAVIDADE = { CRITICO: 'Crítico', ATENCAO: 'Atenção', INFO: 'Informação' };
 
 const digitos = (v) => (v ?? '').replace(/\D/g, '');
 

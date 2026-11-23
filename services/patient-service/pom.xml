@@ -63,6 +63,16 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!-- Cache distribuído (Redis): a ficha do paciente é lida muitas vezes pelos outros serviços -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
         <!-- Health checks e métricas -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

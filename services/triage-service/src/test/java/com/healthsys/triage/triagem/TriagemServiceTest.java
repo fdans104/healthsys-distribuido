@@ -1,5 +1,6 @@
 package com.healthsys.triage.triagem;
 
+import com.healthsys.triage.eventos.RegistroDeEventos;
 import com.healthsys.triage.exception.AcaoNaoPermitidaException;
 import com.healthsys.triage.exception.ConflitoEdicaoException;
 import com.healthsys.triage.exception.RegraNegocioException;
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -41,13 +43,15 @@ class TriagemServiceTest {
 
     private TriagemRepository repository;
     private PacienteClient pacientes;
+    private RegistroDeEventos eventos;
     private TriagemService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(TriagemRepository.class);
         pacientes = mock(PacienteClient.class);
-        service = new TriagemService(repository, pacientes, RELOGIO);
+        eventos = mock(RegistroDeEventos.class);
+        service = new TriagemService(repository, pacientes, eventos, RELOGIO);
         when(pacientes.buscar(1, TOKEN)).thenReturn(new PacienteResumo(1, "Maria Silva"));
         when(repository.save(any(Triagem.class))).thenAnswer(inv -> inv.getArgument(0));
         when(repository.saveAndFlush(any(Triagem.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -87,6 +91,20 @@ class TriagemServiceTest {
         assertThatThrownBy(() -> service.abrir(new AberturaRequest(1, "Febre"), RECEPCAO, TOKEN))
                 .isInstanceOf(RegraNegocioException.class);
         verify(repository, never()).save(any());
+        verify(eventos, never()).registrar(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void cadaMudancaGeraUmEventoParaAsNotificacoes() {
+        service.abrir(new AberturaRequest(1, "Febre"), RECEPCAO, TOKEN);
+        verify(eventos).registrar(eq("TRIAGEM_ABERTA"), eq(1), eq("Maria Silva"), eq(RECEPCAO), anyMap());
+
+        naBase(triagem(StatusTriagem.PENDENTE, null, 0));
+        service.avaliar(10, avaliacao(ClassificacaoRisco.CRITICO, 0), ENFERMEIRO);
+        verify(eventos).registrar(eq("TRIAGEM_AVALIADA"), eq(1), eq("Maria Silva"), eq(ENFERMEIRO), anyMap());
+
+        service.mudarStatus(10, new StatusRequest(StatusTriagem.EM_ATENDIMENTO, 0L), MEDICA);
+        verify(eventos).registrar(eq("TRIAGEM_STATUS_ALTERADO"), eq(1), eq("Maria Silva"), eq(MEDICA), anyMap());
     }
 
     @Test

@@ -17,6 +17,16 @@ spring:
     hibernate:
       ddl-auto: none
     open-in-view: false
+  # Cache distribuído: GET /api/v1/pacientes/{id} fica guardado no Redis por 10 minutos (CacheConfig).
+  cache:
+    type: redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      # Se o Redis cair, desiste rápido e busca no PostgreSQL (o cache é só um atalho).
+      timeout: 500ms
+      connect-timeout: 500ms
 
 # Mesmo segredo do auth-service: o token é validado localmente (assinatura + expiração + emissor).
 jwt:
@@ -27,6 +37,15 @@ springdoc:
     path: /swagger-ui.html
 
 management:
+  health:
+    # O cache é opcional: o serviço continua saudável (e atendendo) mesmo com o Redis fora do ar.
+    redis:
+      enabled: false
+  metrics:
+    distribution:
+      # Permite calcular o tempo de resposta (percentil 95) no Grafana.
+      percentiles-histogram:
+        http.server.requests: true
   endpoints:
     web:
       exposure:

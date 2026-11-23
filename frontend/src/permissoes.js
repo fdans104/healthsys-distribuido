@@ -1,5 +1,5 @@
 // Quem pode fazer o quê na tela, pensado como num hospital.
-// A regra de verdade fica no servidor (SecurityConfig do patient-service e do auth-service):
+// A regra de verdade fica no servidor (SecurityConfig de cada microsserviço):
 // a tela só esconde o que a pessoa não pode usar.
 
 export const podeGerenciarUsuarios = (perfil) => perfil === 'ADMIN';
@@ -31,3 +31,15 @@ export const podeAtenderTriagem = (perfil) => perfil === 'MEDICO';
 export const podeCancelarTriagem = (perfil) => podeVerTriagens(perfil);
 // A recepção acompanha a fila, mas não vê sintomas nem sinais vitais.
 export const podeVerDadosDaTriagem = (perfil) => perfil === 'ENFERMEIRO' || perfil === 'MEDICO';
+
+// Leitos (monitoring-service): todos veem a ocupação; o administrador cuida da estrutura (cadastrar/remover leitos),
+// médico e enfermagem internam e dão alta, a enfermagem confirma a higienização.
+export const podeVerLeitos = () => true;
+export const podeGerenciarLeitos = (perfil) => perfil === 'ADMIN';
+export const podeInternar = (perfil) => perfil === 'MEDICO' || perfil === 'ENFERMEIRO';
+export const podeHigienizar = (perfil) => perfil === 'ENFERMEIRO';
+// Sinais vitais ao vivo e alertas são dado clínico.
+export const podeMonitorar = (perfil) => perfil === 'MEDICO' || perfil === 'ENFERMEIRO';
+// O administrador não recebe avisos clínicos.
+export const recebeNotificacoes = (perfil) => perfil !== 'ADMIN';
+

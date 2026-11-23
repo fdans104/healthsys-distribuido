@@ -1,0 +1,67 @@
+server:
+  port: ${SERVER_PORT:8086}
+
+spring:
+  application:
+    name: monitoring-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5435}/${DB_NAME:healthsys_monitoring}
+    username: ${DB_USER:monitoring_user}
+    password: ${DB_PASSWORD:monitoring_pass}
+  sql:
+    init:
+      # Executa o schema.sql (idempotente) a cada inicialização: o serviço é dono das suas tabelas.
+      mode: always
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  # Mensageria: alertas e mudanças de leito vão para o tópico "monitoramento.eventos".
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      properties:
+        # Se o Kafka estiver fora do ar, desiste rápido: o evento continua guardado na caixa de saída.
+        max.block.ms: 3000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+        enable.idempotence: true
+    admin:
+      operation-timeout: 5s
+      close-timeout: 5s
+
+# IoT: endereço do broker MQTT onde os monitores dos leitos publicam os sinais vitais.
+mqtt:
+  url: ${MQTT_URL:tcp://localhost:1883}
+
+# Caixa de saída: de quanto em quanto tempo procura eventos para enviar ao Kafka.
+eventos:
+  intervalo-ms: 2000
+  timeout-envio-ms: 5000
+
+# Mesmo segredo do auth-service: o token é validado localmente (assinatura + expiração + emissor).
+jwt:
+  secret: ${JWT_SECRET:healthsys-dev-secret-troque-em-producao-0123456789}
+
+# Endereço interno do serviço de pacientes (usado para confirmar o paciente na internação).
+servicos:
+  pacientes-url: ${PATIENT_SERVICE_URL:http://localhost:8082}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

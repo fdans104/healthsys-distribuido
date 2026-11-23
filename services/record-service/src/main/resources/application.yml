@@ -12,6 +12,25 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  # Mensageria: os eventos do prontuário vão para o tópico "prontuario.eventos".
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      properties:
+        # Se o Kafka estiver fora do ar, desiste rápido: o evento continua guardado na caixa de saída.
+        max.block.ms: 3000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+        enable.idempotence: true
+    admin:
+      operation-timeout: 5s
+      close-timeout: 5s
+
+# Caixa de saída: de quanto em quanto tempo procura eventos para enviar ao Kafka.
+eventos:
+  intervalo-ms: 2000
+  timeout-envio-ms: 5000
 
 # Mesmo segredo do auth-service: o token é validado localmente (assinatura + expiração + emissor).
 jwt:
@@ -26,6 +45,11 @@ springdoc:
     path: /swagger-ui.html
 
 management:
+  metrics:
+    distribution:
+      # Permite calcular o tempo de resposta (percentil 95) no Grafana.
+      percentiles-histogram:
+        http.server.requests: true
   endpoints:
     web:
       exposure:

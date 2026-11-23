@@ -1,5 +1,6 @@
 package com.healthsys.triage.triagem;
 
+import com.healthsys.triage.eventos.RegistroDeEventos;
 import com.healthsys.triage.exception.AcaoNaoPermitidaException;
 import com.healthsys.triage.exception.ConflitoEdicaoException;
 import com.healthsys.triage.exception.RecursoNaoEncontradoException;
@@ -18,6 +19,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +31,8 @@ import java.util.Set;
  * - RN40: status só PENDENTE, EM_ATENDIMENTO, FINALIZADA ou CANCELADA; triagem encerrada não volta atrás.
  * - RN41: quem pode cada mudança de status (o médico atende e finaliza; quem estiver na triagem pode cancelar).
  * - RN54: quem salva com uma versão antiga é recusado.
+ * Cada mudança gera um evento (TRIAGEM_ABERTA, TRIAGEM_AVALIADA, TRIAGEM_STATUS_ALTERADO), gravado na mesma
+ * transação e enviado depois ao Kafka. O notification-service avisa a enfermagem, o médico e a recepção.
  */
 @Service
 public class TriagemService {
@@ -60,17 +64,19 @@ public class TriagemService {
 
     private final TriagemRepository repository;
     private final PacienteClient pacientes;
+    private final RegistroDeEventos eventos;
     private final Clock relogio;
 
     @Autowired
-    public TriagemService(TriagemRepository repository, PacienteClient pacientes) {
-        this(repository, pacientes, Clock.systemDefaultZone());
+    public TriagemService(TriagemRepository repository, PacienteClient pacientes, RegistroDeEventos eventos) {
+        this(repository, pacientes, eventos, Clock.systemDefaultZone());
     }
 
     /** Usado nos testes, para fixar o "agora". */
-    TriagemService(TriagemRepository repository, PacienteClient pacientes, Clock relogio) {
+    TriagemService(TriagemRepository repository, PacienteClient pacientes, RegistroDeEventos eventos, Clock relogio) {
         this.repository = repository;
         this.pacientes = pacientes;
+        this.eventos = eventos;
         this.relogio = relogio;
     }
 
@@ -81,8 +87,12 @@ public class TriagemService {
         if (repository.existsByPacienteIdAndStatusIn(req.pacienteId(), EM_ANDAMENTO)) {
             throw new RegraNegocioException("Este paciente já tem uma triagem em andamento.");
         }
-        Triagem triagem = new Triagem(paciente.id(), paciente.nome(), req.queixaPrincipal().trim(), quem, agora());
-        return TriagemResponse.de(repository.save(triagem));
+        Triagem triagem = repository.save(
+                new Triagem(paciente.id(), paciente.nome(), req.queixaPrincipal().trim(), quem, agora()));
+        Map<String, Object> dados = dadosDo(triagem);
+        dados.put("queixaPrincipal", triagem.getQueixaPrincipal());
+        eventos.registrar("TRIAGEM_ABERTA", triagem.getPacienteId(), triagem.getPacienteNome(), quem, dados);
+        return TriagemResponse.de(triagem);
     }
 
     /** RF16: consulta por status e/ou paciente, na ordem da fila. */
@@ -114,7 +124,11 @@ public class TriagemService {
         }
         triagem.avaliar(req.sintomas().trim(), textoOuNulo(req.pressaoArterial()), req.temperatura(),
                 req.frequenciaCardiaca(), req.saturacao(), req.classificacaoRisco(), enfermeiro, agora());
-        return TriagemResponse.de(repository.saveAndFlush(triagem));
+        Triagem salva = repository.saveAndFlush(triagem);
+        Map<String, Object> dados = dadosDo(salva);
+        dados.put("queixaPrincipal", salva.getQueixaPrincipal());
+        eventos.registrar("TRIAGEM_AVALIADA", salva.getPacienteId(), salva.getPacienteNome(), enfermeiro, dados);
+        return TriagemResponse.de(salva);
     }
 
     /** RF16: muda o status seguindo as regras RN39, RN40 e RN41. */
@@ -144,7 +158,20 @@ public class TriagemService {
                     "A triagem ainda não tem classificação de risco: a enfermagem precisa avaliar o paciente primeiro.");
         }
         triagem.mudarStatus(novo, quem, agora());
-        return TriagemResponse.de(repository.saveAndFlush(triagem));
+        Triagem salva = repository.saveAndFlush(triagem);
+        Map<String, Object> dados = dadosDo(salva);
+        dados.put("statusAnterior", atual.name());
+        eventos.registrar("TRIAGEM_STATUS_ALTERADO", salva.getPacienteId(), salva.getPacienteNome(), quem, dados);
+        return TriagemResponse.de(salva);
+    }
+
+    /** Dados comuns a todos os eventos da triagem. */
+    private static Map<String, Object> dadosDo(Triagem t) {
+        Map<String, Object> dados = new LinkedHashMap<>();
+        dados.put("triagemId", t.getId());
+        dados.put("status", t.getStatus().name());
+        dados.put("classificacaoRisco", t.getClassificacaoRisco() == null ? null : t.getClassificacaoRisco().name());
+        return dados;
     }
 
     private Triagem buscarEntidade(Integer id) {

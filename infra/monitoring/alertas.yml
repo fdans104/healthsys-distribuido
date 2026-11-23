@@ -1,0 +1,43 @@
+# Alertas de operação (aparecem em http://localhost:9090/alerts).
+groups:
+  - name: healthsys
+    rules:
+      - alert: ServicoForaDoAr
+        expr: up == 0
+        for: 30s
+        labels:
+          severidade: critica
+        annotations:
+          resumo: "O serviço {{ $labels.job }} está fora do ar há mais de 30 segundos."
+
+      - alert: CircuitoAberto
+        expr: resilience4j_circuitbreaker_state{state="open"} == 1
+        for: 10s
+        labels:
+          severidade: alta
+        annotations:
+          resumo: "Circuit breaker {{ $labels.name }} aberto em {{ $labels.job }}: o serviço chamado não está respondendo."
+
+      - alert: EventosAcumuladosSemKafka
+        expr: healthsys_eventos_pendentes > 0
+        for: 1m
+        labels:
+          severidade: alta
+        annotations:
+          resumo: "{{ $value }} eventos de {{ $labels.job }} esperando o Kafka há mais de 1 minuto."
+
+      - alert: MonitoresDosLeitosDesconectados
+        expr: healthsys_mqtt_conectado == 0
+        for: 30s
+        labels:
+          severidade: alta
+        annotations:
+          resumo: "O monitoring-service não está recebendo os monitores dos leitos (MQTT)."
+
+      - alert: MuitosErros5xx
+        expr: sum by (job) (rate(http_server_requests_seconds_count{status=~"5.."}[1m])) > 0.5
+        for: 1m
+        labels:
+          severidade: media
+        annotations:
+          resumo: "{{ $labels.job }} está respondendo erros 5xx com frequência."

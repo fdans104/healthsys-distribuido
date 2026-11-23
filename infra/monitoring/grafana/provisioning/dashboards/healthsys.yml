@@ -1,0 +1,10 @@
+# Carrega os painéis da pasta /etc/grafana/dashboards.
+apiVersion: 1
+providers:
+- name: HealthSys
+  folder: HealthSys
+  type: file
+  disableDeletion: false
+  allowUiUpdates: true
+  options:
+    path: /etc/grafana/dashboards

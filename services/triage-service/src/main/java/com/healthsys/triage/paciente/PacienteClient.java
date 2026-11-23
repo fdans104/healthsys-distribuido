@@ -1,34 +1,44 @@
 package com.healthsys.triage.paciente;
 
 import com.healthsys.triage.exception.RecursoNaoEncontradoException;
-import com.healthsys.triage.exception.ServicoIndisponivelException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.retry.Retry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
 
 /**
- * Comunicação síncrona (REST, RNF04) com o patient-service.
- * RNF09: a triagem não lê o banco de pacientes; ele pergunta ao serviço dono desses dados.
+ * Comunicação síncrona (REST, RNF04) com o patient-service: confirma o paciente antes de abrir a triagem e guarda o nome dele.
+ * RNF09: este serviço não lê o banco de pacientes; ele pergunta ao serviço dono desses dados.
  * O token do usuário é repassado, então o patient-service aplica as próprias regras de acesso.
+ * A chamada é protegida por timeout, nova tentativa e circuit breaker (ChamadaResiliente).
  */
 @Component
 public class PacienteClient {
 
     private final RestClient http;
+    private final CircuitBreaker circuito;
+    private final Retry novaTentativa;
 
-    public PacienteClient(RestClient.Builder builder, @Value("${servicos.pacientes-url}") String urlPacientes) {
+    public PacienteClient(RestClient.Builder builder, @Value("${servicos.pacientes-url}") String urlPacientes,
+                          CircuitBreaker circuitoPacientes, Retry novaTentativaPacientes) {
         SimpleClientHttpRequestFactory tempos = new SimpleClientHttpRequestFactory();
-        tempos.setConnectTimeout(3000);
-        tempos.setReadTimeout(5000);
+        tempos.setConnectTimeout(2000);
+        tempos.setReadTimeout(3000);
         this.http = builder.baseUrl(urlPacientes).requestFactory(tempos).build();
+        this.circuito = circuitoPacientes;
+        this.novaTentativa = novaTentativaPacientes;
     }
 
     /** Confirma que o paciente existe. Lança 404 se não existir e 503 se o serviço de pacientes não responder. */
     public PacienteResumo buscar(Integer pacienteId, String authorization) {
+        return ChamadaResiliente.executar(circuito, novaTentativa, () -> consultar(pacienteId, authorization));
+    }
+
+    private PacienteResumo consultar(Integer pacienteId, String authorization) {
         try {
             PacienteResumo paciente = http.get()
                     .uri("/api/v1/pacientes/{id}", pacienteId)
@@ -41,9 +51,6 @@ public class PacienteClient {
             return paciente;
         } catch (HttpClientErrorException.NotFound e) {
             throw new RecursoNaoEncontradoException("Paciente " + pacienteId + " não encontrado");
-        } catch (RestClientException e) {
-            throw new ServicoIndisponivelException(
-                    "Não foi possível confirmar o paciente: o serviço de pacientes não respondeu. Tente novamente em instantes.");
         }
     }
 }

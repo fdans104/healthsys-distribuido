@@ -1,0 +1,48 @@
+server:
+  port: ${SERVER_PORT:8085}
+
+spring:
+  application:
+    name: notification-service
+  data:
+    mongodb:
+      # RNF09: as notificações ficam em um banco só deste serviço (healthsys_notifications).
+      uri: ${MONGO_URI:mongodb://mongouser:mongopass@localhost:27017/healthsys_notifications?authSource=admin}
+      auto-index-creation: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: notification-service
+      # Na primeira vez que o grupo conecta, lê desde o começo do tópico (nada se perde).
+      auto-offset-reset: earliest
+    producer:
+      # Usado só para mandar mensagens com problema para o tópico DLT.
+      acks: all
+    admin:
+      operation-timeout: 5s
+      close-timeout: 5s
+
+# Mesmo segredo do auth-service: o token é validado localmente (assinatura + expiração + emissor).
+jwt:
+  secret: ${JWT_SECRET:healthsys-dev-secret-troque-em-producao-0123456789}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

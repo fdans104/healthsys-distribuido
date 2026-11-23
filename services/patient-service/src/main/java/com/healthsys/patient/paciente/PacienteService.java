@@ -1,6 +1,7 @@
 package com.healthsys.patient.paciente;
 
 import com.healthsys.patient.clinico.ClinicoService;
+import com.healthsys.patient.config.CacheConfig;
 import com.healthsys.patient.exception.ConflitoEdicaoException;
 import com.healthsys.patient.exception.CpfJaCadastradoException;
 import com.healthsys.patient.exception.PacienteComRegistrosClinicosException;
@@ -8,6 +9,8 @@ import com.healthsys.patient.exception.RecursoNaoEncontradoException;
 import com.healthsys.patient.paciente.dto.PacienteRequest;
 import com.healthsys.patient.paciente.dto.PacienteResponse;
 import com.healthsys.patient.validacao.CpfUtils;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,11 +67,18 @@ public class PacienteService {
         return pacientes.stream().map(PacienteResponse::de).toList();
     }
 
+    /**
+     * Cache distribuído (Redis): os outros serviços consultam o paciente a cada registro clínico.
+     * A 1ª leitura vem do PostgreSQL e as próximas do Redis, até alguém editar (ou passarem 10 minutos).
+     */
+    @Cacheable(cacheNames = CacheConfig.PACIENTES, key = "#p0")
     @Transactional(readOnly = true)
     public PacienteResponse buscarPorId(Integer id) {
         return PacienteResponse.de(buscarEntidade(id));
     }
 
+    /** Ao editar, a cópia do cache é descartada (depois que a transação confirma). */
+    @CacheEvict(cacheNames = CacheConfig.PACIENTES, key = "#p0")
     @Transactional
     public PacienteResponse atualizar(Integer id, PacienteRequest req) {
         Paciente paciente = buscarEntidade(id);
@@ -96,6 +106,7 @@ public class PacienteService {
     }
 
     /** Só exclui um cadastro feito por engano: paciente com prontuário (registros clínicos) não pode ser apagado. */
+    @CacheEvict(cacheNames = CacheConfig.PACIENTES, key = "#p0")
     @Transactional
     public void remover(Integer id) {
         Paciente paciente = buscarEntidade(id);
